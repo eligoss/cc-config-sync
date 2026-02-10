@@ -1,0 +1,27 @@
+{
+  "name": "claude-code-configs",
+  "version": "1.0.0",
+  "description": "Sync Claude Code configurations across machines",
+  "type": "module",
+  "scripts": {
+    "sync": "tsx src/cli.ts --repo ../claude-code-sync",
+    "pull": "tsx src/cli.ts --repo ../claude-code-sync pull",
+    "push": "tsx src/cli.ts --repo ../claude-code-sync push",
+    "status": "tsx src/cli.ts --repo ../claude-code-sync status",
+    "list": "tsx src/cli.ts --repo ../claude-code-sync list",
+    "init": "tsx src/cli.ts --repo ../claude-code-sync init",
+    "add-project": "tsx src/cli.ts --repo ../claude-code-sync add-project",
+    "remove-project": "tsx src/cli.ts --repo ../claude-code-sync remove-project",
+    "clean-backups": "tsx src/cli.ts --repo ../claude-code-sync clean-backups",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "commander": "^13.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3",
+    "vitest": "^4.0.18"
+  }
+}
