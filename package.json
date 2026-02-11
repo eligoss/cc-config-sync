@@ -36,13 +36,13 @@
   ],
   "author": "Anton Borodulin",
   "license": "MIT",
-  "homepage": "https://github.com/aborodulin/claude-code-config-sync#readme",
+  "homepage": "https://github.com/eligoss/claude-code-config-sync#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/aborodulin/claude-code-config-sync.git"
+    "url": "git+https://github.com/eligoss/claude-code-config-sync.git"
   },
   "bugs": {
-    "url": "https://github.com/aborodulin/claude-code-config-sync/issues"
+    "url": "https://github.com/eligoss/claude-code-config-sync/issues"
   },
   "dependencies": {
     "commander": "^13.1.0"

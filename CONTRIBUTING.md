@@ -5,7 +5,7 @@ Thanks for your interest in contributing! Here's how to get started.
 ## Development Setup
 
 ```bash
-git clone https://github.com/aborodulin/claude-code-config-sync.git
+git clone https://github.com/eligoss/claude-code-config-sync.git
 cd claude-code-config-sync
 npm install
 ```
@@ -66,7 +66,7 @@ src/
 
 ## Reporting Bugs
 
-Open an issue at https://github.com/aborodulin/claude-code-config-sync/issues with:
+Open an issue at https://github.com/eligoss/claude-code-config-sync/issues with:
 
 - Steps to reproduce
 - Expected vs actual behavior

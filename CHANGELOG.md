@@ -18,4 +18,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `add-project` and `remove-project` commands for managing tracked projects
 - Full test suite covering diff, files, filter, config, paths, and machine modules
 
-[0.1.0]: https://github.com/aborodulin/claude-code-config-sync/releases/tag/v0.1.0
+[0.1.0]: https://github.com/eligoss/claude-code-config-sync/releases/tag/v0.1.0
