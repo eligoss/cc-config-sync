@@ -12,14 +12,16 @@ import { cleanBackupsCommand } from "./commands/clean-backups.js";
 const program = new Command();
 
 program
-  .name("claude-config-sync")
+  .name("claude-code-config-sync")
   .description("Sync Claude Code configurations across machines")
-  .version("1.0.0")
+  .version("0.1.0")
   .option("--repo <path>", "Path to the sync repo (or set CLAUDE_SYNC_REPO env var)")
   .hook("preAction", () => {
     const repoPath = program.opts().repo || process.env.CLAUDE_SYNC_REPO;
     if (!repoPath) {
-      console.error("Error: sync repo path required. Use --repo <path> or set CLAUDE_SYNC_REPO env var.");
+      console.error(
+        "Error: sync repo path required. Use --repo <path> or set CLAUDE_SYNC_REPO env var.",
+      );
       process.exit(1);
     }
     setSyncRepoPath(repoPath);
@@ -51,15 +53,9 @@ program
   .option("--global-only", "Only show status for global configs")
   .action(statusCommand);
 
-program
-  .command("list")
-  .description("Show all registered paths")
-  .action(listCommand);
+program.command("list").description("Show all registered paths").action(listCommand);
 
-program
-  .command("init")
-  .description("Interactive setup for current machine")
-  .action(initCommand);
+program.command("init").description("Interactive setup for current machine").action(initCommand);
 
 program
   .command("add-project")

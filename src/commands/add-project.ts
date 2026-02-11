@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
-import { getCurrentMachineConfig, getMachineName } from "../machine.js";
+import { getMachineName } from "../machine.js";
 import { loadConfig, saveConfig } from "../config.js";
 
 export function addProjectCommand(name: string, projectPath: string): void {
@@ -9,7 +9,9 @@ export function addProjectCommand(name: string, projectPath: string): void {
   const machineConfig = config.machines[machineName];
 
   if (!machineConfig) {
-    console.error(`No configuration found for machine "${machineName}". Run \`npm run init\` first.`);
+    console.error(
+      `No configuration found for machine "${machineName}". Run \`npm run init\` first.`,
+    );
     process.exit(1);
   }
 

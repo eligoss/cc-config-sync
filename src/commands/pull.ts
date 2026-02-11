@@ -29,7 +29,9 @@ export function pullCommand(options: PullOptions): void {
   const copiedRepoPaths: string[] = [];
   const verb = options.dryRun ? "would copy" : "pull";
 
-  console.log(`${options.dryRun ? "[DRY RUN] " : ""}Pulling configs for machine: ${machine.name}\n`);
+  console.log(
+    `${options.dryRun ? "[DRY RUN] " : ""}Pulling configs for machine: ${machine.name}\n`,
+  );
 
   for (const file of files) {
     if (!fileExists(file.localPath)) {
@@ -59,7 +61,9 @@ export function pullCommand(options: PullOptions): void {
     copied++;
   }
 
-  console.log(`\nDone: ${copied} ${options.dryRun ? "would be copied" : "copied"}, ${skippedIdentical} unchanged, ${skippedMissing} missing locally.`);
+  console.log(
+    `\nDone: ${copied} ${options.dryRun ? "would be copied" : "copied"}, ${skippedIdentical} unchanged, ${skippedMissing} missing locally.`,
+  );
 
   if (options.commit && !options.dryRun && copied > 0) {
     const repoPath = getSyncRepoPath();

@@ -1,15 +1,17 @@
 # Claude Code Config Sync
 
+[![Test](https://github.com/aborodulin/claude-code-config-sync/actions/workflows/test.yml/badge.svg)](https://github.com/aborodulin/claude-code-config-sync/actions/workflows/test.yml)
+[![npm version](https://img.shields.io/npm/v/claude-code-config-sync)](https://www.npmjs.com/package/claude-code-config-sync)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 A CLI tool to sync your Claude Code configuration files across multiple machines using a git-tracked repository.
 
 ## How It Works
 
 The tool uses a **two-repo setup**:
 
-1. **This repo** (app) — contains the CLI tool source code
-2. **Sync repo** — a separate git repo where your configs are stored, organized by machine hostname
-
-The sync repo is just a regular git folder you can push/pull with git. The CLI copies files between your local machine and this sync repo.
+1. **Sync repo** — a git repo where your configs are stored, organized by machine hostname
+2. **This tool** — the CLI that copies files between your local machine and the sync repo
 
 ```
 sync-repo/
@@ -30,73 +32,100 @@ sync-repo/
                 └── ...
 ```
 
+## Installation
+
+```bash
+npm install -g claude-code-config-sync
+```
+
+Requires Node.js 18+.
+
 ## Quick Start
 
 ```bash
-# 1. Clone both repos
-git clone <this-repo>
-git clone <sync-repo>    # or create an empty one: mkdir sync-repo && cd sync-repo && git init
+# 1. Create a sync repo (or clone an existing one)
+mkdir ~/claude-sync && cd ~/claude-sync && git init
 
-# 2. Install dependencies
-cd claude-code-configs
-npm install
+# 2. Set up your machine (interactive)
+claude-code-config-sync --repo ~/claude-sync init
 
-# 3. Set up your machine (interactive)
-npm run init
+# 3. Pull your local configs into the sync repo
+claude-code-config-sync --repo ~/claude-sync pull
 
-# 4. Pull your local configs into the sync repo
-npm run pull
+# 4. Check what's different
+claude-code-config-sync --repo ~/claude-sync status
+```
 
-# 5. Check what's different
-npm run status
+**Tip:** Set `CLAUDE_SYNC_REPO` to avoid passing `--repo` every time:
+
+```bash
+export CLAUDE_SYNC_REPO=~/claude-sync
+claude-code-config-sync pull
 ```
 
 ## Commands
 
-### `npm run init`
+### `init`
 
 Interactive setup. Asks for your global config path (defaults to `~/.claude`) and lets you add projects to track.
 
-### `npm run pull`
+### `pull`
 
 Copies local config files into the sync repo. Safe — only writes to the sync repo, never touches your local files.
 
-### `npm run push`
+```bash
+claude-code-config-sync pull                  # pull everything
+claude-code-config-sync pull -p my-app        # pull one project
+claude-code-config-sync pull --global-only    # pull global configs only
+claude-code-config-sync pull --dry-run        # preview without copying
+claude-code-config-sync pull --commit         # auto git commit after pull
+```
+
+### `push`
 
 Copies configs from the sync repo back to your local machine. Shows diffs before applying, asks for confirmation, and creates backups of any files it overwrites.
 
-### `npm run status`
+```bash
+claude-code-config-sync push                  # push everything (interactive)
+claude-code-config-sync push -y               # apply all without prompting
+claude-code-config-sync push -p my-app        # push one project
+```
+
+### `status`
 
 Shows which files differ between your local machine and the sync repo.
 
 ```bash
-npm run status          # summary only
-npm run status -- -v    # include diffs
+claude-code-config-sync status                # summary only
+claude-code-config-sync status -v             # include diffs
+claude-code-config-sync status --all          # show missing-both entries
 ```
 
-### `npm run list`
+### `list`
 
 Lists all registered config paths and whether they exist locally.
 
-### `npm run add-project -- <name> <path>`
+### `add-project <name> <path>`
 
-Add a project to track (non-interactive).
+Add a project to track.
 
 ```bash
-npm run add-project -- my-app /Users/me/projects/my-app
+claude-code-config-sync add-project my-app /path/to/my-app
 ```
 
-### `npm run remove-project -- <name>`
+### `remove-project <name>`
 
 Stop tracking a project.
 
 ```bash
-npm run remove-project -- my-app
+claude-code-config-sync remove-project my-app
 ```
 
-## Configuration
+### `clean-backups`
 
-All commands need to know where the sync repo lives. This is already configured in `package.json` scripts via `--repo ../claude-code-sync`. You can also set it with the `CLAUDE_SYNC_REPO` environment variable.
+Find and delete backup files created by `push`.
+
+## Configuration
 
 ### sync.config.json
 
@@ -120,26 +149,35 @@ The registry file in the sync repo:
 
 Per machine, the tool tracks:
 
-| Scope | Files |
-|-------|-------|
-| **Global** (`~/.claude/`) | `CLAUDE.md`, `settings.json`, `settings.local.json` |
+| Scope                          | Files                                                               |
+| ------------------------------ | ------------------------------------------------------------------- |
+| **Global** (`~/.claude/`)      | `CLAUDE.md`, `settings.json`, `settings.local.json`                 |
 | **Per-project** (project root) | `CLAUDE.md`, `.claude/settings.json`, `.claude/settings.local.json` |
 
 ## Typical Workflow
 
 ```bash
 # On machine A — save your latest configs
-npm run pull
-cd ../claude-code-sync && git add -A && git commit -m "update configs" && git push
+claude-code-config-sync pull
+cd ~/claude-sync && git add -A && git commit -m "update configs" && git push
 
 # On machine B — get the latest configs
-cd sync-repo && git pull
-cd ../claude-code-configs && npm run push
+cd ~/claude-sync && git pull
+claude-code-config-sync push
 ```
 
 ## Development
 
 ```bash
-npm install       # install deps
-npm test          # run tests
+git clone https://github.com/aborodulin/claude-code-config-sync.git
+cd claude-code-config-sync
+npm install
+npm test
+npm run typecheck
 ```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for more details.
+
+## License
+
+[MIT](LICENSE)

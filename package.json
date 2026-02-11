@@ -1,27 +1,72 @@
 {
-  "name": "claude-code-configs",
-  "version": "1.0.0",
-  "description": "Sync Claude Code configurations across machines",
+  "name": "claude-code-config-sync",
+  "version": "0.1.0",
+  "description": "Sync Claude Code configurations across machines using a git-tracked repository",
   "type": "module",
+  "bin": {
+    "claude-code-config-sync": "./dist/cli.js"
+  },
+  "files": [
+    "dist/",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "scripts": {
-    "sync": "tsx src/cli.ts --repo ../claude-code-sync",
-    "pull": "tsx src/cli.ts --repo ../claude-code-sync pull",
-    "push": "tsx src/cli.ts --repo ../claude-code-sync push",
-    "status": "tsx src/cli.ts --repo ../claude-code-sync status",
-    "list": "tsx src/cli.ts --repo ../claude-code-sync list",
-    "init": "tsx src/cli.ts --repo ../claude-code-sync init",
-    "add-project": "tsx src/cli.ts --repo ../claude-code-sync add-project",
-    "remove-project": "tsx src/cli.ts --repo ../claude-code-sync remove-project",
-    "clean-backups": "tsx src/cli.ts --repo ../claude-code-sync clean-backups",
-    "test": "vitest run"
+    "build": "tsc -p tsconfig.build.json && node scripts/prepend-shebang.js",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src/",
+    "lint:fix": "eslint src/ --fix",
+    "format": "prettier --write \"src/**/*.ts\" \"*.json\" \"*.md\"",
+    "format:check": "prettier --check \"src/**/*.ts\" \"*.json\" \"*.md\"",
+    "prepublishOnly": "npm run build && npm run typecheck && npm test",
+    "prepare": "husky"
+  },
+  "keywords": [
+    "claude",
+    "claude-code",
+    "config",
+    "sync",
+    "dotfiles",
+    "cli"
+  ],
+  "author": "Anton Borodulin",
+  "license": "MIT",
+  "homepage": "https://github.com/aborodulin/claude-code-config-sync#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aborodulin/claude-code-config-sync.git"
+  },
+  "bugs": {
+    "url": "https://github.com/aborodulin/claude-code-config-sync/issues"
   },
   "dependencies": {
     "commander": "^13.1.0"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.2",
     "@types/node": "^22.13.1",
+    "eslint": "^9.39.2",
+    "eslint-config-prettier": "^10.1.8",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.7",
+    "prettier": "^3.8.1",
     "tsx": "^4.19.2",
     "typescript": "^5.7.3",
+    "typescript-eslint": "^8.55.0",
     "vitest": "^4.0.18"
+  },
+  "lint-staged": {
+    "*.ts": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md}": [
+      "prettier --write"
+    ]
   }
 }

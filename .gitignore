@@ -2,3 +2,7 @@ node_modules/
 dist/
 *.backup-*
 .DS_Store
+configs/
+sync.config.json
+*.local.json
+*.tgz

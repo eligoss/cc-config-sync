@@ -35,9 +35,9 @@ describe("filterConfigFiles", () => {
     const mockExit = vi.spyOn(process, "exit").mockImplementation(() => {
       throw new Error("process.exit");
     });
-    expect(() =>
-      filterConfigFiles(files, { project: "app", globalOnly: true })
-    ).toThrow("process.exit");
+    expect(() => filterConfigFiles(files, { project: "app", globalOnly: true })).toThrow(
+      "process.exit",
+    );
     mockExit.mockRestore();
   });
 
@@ -45,9 +45,7 @@ describe("filterConfigFiles", () => {
     const mockExit = vi.spyOn(process, "exit").mockImplementation(() => {
       throw new Error("process.exit");
     });
-    expect(() =>
-      filterConfigFiles(files, { project: "nonexistent" })
-    ).toThrow("process.exit");
+    expect(() => filterConfigFiles(files, { project: "nonexistent" })).toThrow("process.exit");
     mockExit.mockRestore();
   });
 });

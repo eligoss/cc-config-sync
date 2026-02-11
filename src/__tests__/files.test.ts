@@ -2,7 +2,13 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdtempSync, writeFileSync, existsSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { fileExists, filesAreIdentical, copyFileWithDir, backupFile, getFileMtime } from "../files.js";
+import {
+  fileExists,
+  filesAreIdentical,
+  copyFileWithDir,
+  backupFile,
+  getFileMtime,
+} from "../files.js";
 
 describe("files", () => {
   let tmp: string;
