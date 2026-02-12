@@ -12,7 +12,7 @@ import { cleanBackupsCommand } from "./commands/clean-backups.js";
 const program = new Command();
 
 program
-  .name("claude-code-config-sync")
+  .name("cc-config-sync")
   .description("Sync Claude Code configurations across machines")
   .version("0.1.0")
   .option("--repo <path>", "Path to the sync repo (or set CLAUDE_SYNC_REPO env var)")

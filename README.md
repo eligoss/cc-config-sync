@@ -1,7 +1,7 @@
 # Claude Code Config Sync
 
 [![Test](https://github.com/eligoss/claude-code-config-sync/actions/workflows/test.yml/badge.svg)](https://github.com/eligoss/claude-code-config-sync/actions/workflows/test.yml)
-[![npm version](https://img.shields.io/npm/v/claude-code-config-sync)](https://www.npmjs.com/package/claude-code-config-sync)
+[![npm version](https://img.shields.io/npm/v/cc-config-sync)](https://www.npmjs.com/package/cc-config-sync)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 A CLI tool to sync your Claude Code configuration files across multiple machines using a git-tracked repository.
@@ -35,7 +35,7 @@ sync-repo/
 ## Installation
 
 ```bash
-npm install -g claude-code-config-sync
+npm install -g cc-config-sync
 ```
 
 Requires Node.js 18+.
@@ -47,20 +47,20 @@ Requires Node.js 18+.
 mkdir ~/claude-sync && cd ~/claude-sync && git init
 
 # 2. Set up your machine (interactive)
-claude-code-config-sync --repo ~/claude-sync init
+cc-config-sync --repo ~/claude-sync init
 
 # 3. Pull your local configs into the sync repo
-claude-code-config-sync --repo ~/claude-sync pull
+cc-config-sync --repo ~/claude-sync pull
 
 # 4. Check what's different
-claude-code-config-sync --repo ~/claude-sync status
+cc-config-sync --repo ~/claude-sync status
 ```
 
 **Tip:** Set `CLAUDE_SYNC_REPO` to avoid passing `--repo` every time:
 
 ```bash
 export CLAUDE_SYNC_REPO=~/claude-sync
-claude-code-config-sync pull
+cc-config-sync pull
 ```
 
 ## Commands
@@ -74,11 +74,11 @@ Interactive setup. Asks for your global config path (defaults to `~/.claude`) an
 Copies local config files into the sync repo. Safe — only writes to the sync repo, never touches your local files.
 
 ```bash
-claude-code-config-sync pull                  # pull everything
-claude-code-config-sync pull -p my-app        # pull one project
-claude-code-config-sync pull --global-only    # pull global configs only
-claude-code-config-sync pull --dry-run        # preview without copying
-claude-code-config-sync pull --commit         # auto git commit after pull
+cc-config-sync pull                  # pull everything
+cc-config-sync pull -p my-app        # pull one project
+cc-config-sync pull --global-only    # pull global configs only
+cc-config-sync pull --dry-run        # preview without copying
+cc-config-sync pull --commit         # auto git commit after pull
 ```
 
 ### `push`
@@ -86,9 +86,9 @@ claude-code-config-sync pull --commit         # auto git commit after pull
 Copies configs from the sync repo back to your local machine. Shows diffs before applying, asks for confirmation, and creates backups of any files it overwrites.
 
 ```bash
-claude-code-config-sync push                  # push everything (interactive)
-claude-code-config-sync push -y               # apply all without prompting
-claude-code-config-sync push -p my-app        # push one project
+cc-config-sync push                  # push everything (interactive)
+cc-config-sync push -y               # apply all without prompting
+cc-config-sync push -p my-app        # push one project
 ```
 
 ### `status`
@@ -96,9 +96,9 @@ claude-code-config-sync push -p my-app        # push one project
 Shows which files differ between your local machine and the sync repo.
 
 ```bash
-claude-code-config-sync status                # summary only
-claude-code-config-sync status -v             # include diffs
-claude-code-config-sync status --all          # show missing-both entries
+cc-config-sync status                # summary only
+cc-config-sync status -v             # include diffs
+cc-config-sync status --all          # show missing-both entries
 ```
 
 ### `list`
@@ -110,7 +110,7 @@ Lists all registered config paths and whether they exist locally.
 Add a project to track.
 
 ```bash
-claude-code-config-sync add-project my-app /path/to/my-app
+cc-config-sync add-project my-app /path/to/my-app
 ```
 
 ### `remove-project <name>`
@@ -118,7 +118,7 @@ claude-code-config-sync add-project my-app /path/to/my-app
 Stop tracking a project.
 
 ```bash
-claude-code-config-sync remove-project my-app
+cc-config-sync remove-project my-app
 ```
 
 ### `clean-backups`
@@ -158,12 +158,12 @@ Per machine, the tool tracks:
 
 ```bash
 # On machine A — save your latest configs
-claude-code-config-sync pull
+cc-config-sync pull
 cd ~/claude-sync && git add -A && git commit -m "update configs" && git push
 
 # On machine B — get the latest configs
 cd ~/claude-sync && git pull
-claude-code-config-sync push
+cc-config-sync push
 ```
 
 ## Development
