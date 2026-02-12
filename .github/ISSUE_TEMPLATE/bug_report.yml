@@ -15,7 +15,7 @@ body:
       label: Steps to Reproduce
       description: How can we reproduce this?
       placeholder: |
-        1. Run `claude-code-config-sync status`
+        1. Run `cc-config-sync status`
         2. ...
     validations:
       required: true
@@ -23,7 +23,7 @@ body:
     id: version
     attributes:
       label: Version
-      description: Output of `claude-code-config-sync --version`
+      description: Output of `cc-config-sync --version`
     validations:
       required: true
   - type: input

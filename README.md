@@ -1,6 +1,6 @@
 # Claude Code Config Sync
 
-[![Test](https://github.com/eligoss/claude-code-config-sync/actions/workflows/test.yml/badge.svg)](https://github.com/eligoss/claude-code-config-sync/actions/workflows/test.yml)
+[![Test](https://github.com/eligoss/cc-config-sync/actions/workflows/test.yml/badge.svg)](https://github.com/eligoss/cc-config-sync/actions/workflows/test.yml)
 [![npm version](https://img.shields.io/npm/v/cc-config-sync)](https://www.npmjs.com/package/cc-config-sync)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
@@ -169,8 +169,8 @@ cc-config-sync push
 ## Development
 
 ```bash
-git clone https://github.com/eligoss/claude-code-config-sync.git
-cd claude-code-config-sync
+git clone https://github.com/eligoss/cc-config-sync.git
+cd cc-config-sync
 npm install
 npm test
 npm run typecheck
