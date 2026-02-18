@@ -2,9 +2,20 @@ import { join } from "node:path";
 import { getConfigsDir } from "./config.js";
 import type { ConfigFile, MachineConfig } from "./types.js";
 
-const GLOBAL_FILES = ["CLAUDE.md", "settings.json", "settings.local.json"];
+const GLOBAL_FILES = [
+  "CLAUDE.md",
+  "settings.json",
+  "settings.local.json",
+  "plugins/installed_plugins.json",
+  "plugins/known_marketplaces.json",
+];
 const PROJECT_ROOT_FILES = ["CLAUDE.md"];
 const PROJECT_CLAUDE_FILES = [".claude/settings.json", ".claude/settings.local.json"];
+const PROJECT_MEMORY_FILES = ["MEMORY.md"];
+
+export function projectPathToClaudeId(projectPath: string): string {
+  return projectPath.replace(/\//g, "-");
+}
 
 export function getConfigFiles(machineName: string, machineConfig: MachineConfig): ConfigFile[] {
   const files: ConfigFile[] = [];
@@ -33,6 +44,14 @@ export function getConfigFiles(machineName: string, machineConfig: MachineConfig
         label: `projects/${projectName}/${file}`,
         localPath: join(projectPath, file),
         repoPath: join(machineDir, "projects", projectName, file),
+      });
+    }
+    for (const file of PROJECT_MEMORY_FILES) {
+      const projectId = projectPathToClaudeId(projectPath);
+      files.push({
+        label: `projects/${projectName}/memory/${file}`,
+        localPath: join(machineConfig.globalConfigPath, "projects", projectId, "memory", file),
+        repoPath: join(machineDir, "projects", projectName, "memory", file),
       });
     }
   }
