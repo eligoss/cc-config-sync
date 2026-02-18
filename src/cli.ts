@@ -8,13 +8,14 @@ import { initCommand } from "./commands/init.js";
 import { addProjectCommand } from "./commands/add-project.js";
 import { removeProjectCommand } from "./commands/remove-project.js";
 import { cleanBackupsCommand } from "./commands/clean-backups.js";
+import { version } from "./version.js";
 
 const program = new Command();
 
 program
   .name("cc-config-sync")
   .description("Sync Claude Code configurations across machines")
-  .version("0.1.0")
+  .version(version)
   .option("--repo <path>", "Path to the sync repo (or set CLAUDE_SYNC_REPO env var)")
   .hook("preAction", () => {
     const repoPath = program.opts().repo || process.env.CLAUDE_SYNC_REPO;
