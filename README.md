@@ -21,13 +21,18 @@ sync-repo/
         ├── global/
         │   ├── CLAUDE.md
         │   ├── settings.json
-        │   └── settings.local.json
+        │   ├── settings.local.json
+        │   └── plugins/
+        │       ├── installed_plugins.json
+        │       └── known_marketplaces.json
         └── projects/
             ├── my-app/
             │   ├── CLAUDE.md
-            │   └── .claude/
-            │       ├── settings.json
-            │       └── settings.local.json
+            │   ├── .claude/
+            │   │   ├── settings.json
+            │   │   └── settings.local.json
+            │   └── memory/
+            │       └── MEMORY.md
             └── another-project/
                 └── ...
 ```
@@ -39,6 +44,20 @@ npm install -g cc-config-sync
 ```
 
 Requires Node.js 18+.
+
+### Updating
+
+To update to the latest version:
+
+```bash
+npm update -g cc-config-sync
+```
+
+Check your installed version:
+
+```bash
+cc-config-sync --version
+```
 
 ## Quick Start
 
@@ -149,10 +168,11 @@ The registry file in the sync repo:
 
 Per machine, the tool tracks:
 
-| Scope                          | Files                                                               |
-| ------------------------------ | ------------------------------------------------------------------- |
-| **Global** (`~/.claude/`)      | `CLAUDE.md`, `settings.json`, `settings.local.json`                 |
-| **Per-project** (project root) | `CLAUDE.md`, `.claude/settings.json`, `.claude/settings.local.json` |
+| Scope                          | Files                                                                                                                    |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------ |
+| **Global** (`~/.claude/`)      | `CLAUDE.md`, `settings.json`, `settings.local.json`, `plugins/installed_plugins.json`, `plugins/known_marketplaces.json` |
+| **Per-project** (project root) | `CLAUDE.md`, `.claude/settings.json`, `.claude/settings.local.json`                                                      |
+| **Per-project** (memory)       | `~/.claude/projects/<project-id>/memory/MEMORY.md`                                                                       |
 
 ## Typical Workflow
 
