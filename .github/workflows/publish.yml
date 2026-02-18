@@ -4,6 +4,17 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to publish (e.g., 0.2.0)"
+        required: true
+        type: string
+      dry-run:
+        description: "Dry run (skip actual publish)"
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   publish:
@@ -13,18 +24,52 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@v4
+
+      - name: Validate version matches package.json
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          PACKAGE_VERSION=$(node -p "require('./package.json').version")
+          INPUT_VERSION="${{ inputs.version }}"
+          if [ "$PACKAGE_VERSION" != "$INPUT_VERSION" ]; then
+            echo "Error: package.json version ($PACKAGE_VERSION) does not match input version ($INPUT_VERSION)"
+            exit 1
+          fi
+          echo "Version validation passed: $PACKAGE_VERSION"
+
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           registry-url: https://registry.npmjs.org
           cache: npm
+
       - run: npm ci
       - run: npm run typecheck
       - run: npm test
-      - run: npm publish --provenance --access public
+      - run: npm run build
+
+      - name: Publish to npm (dry-run)
+        if: inputs.dry-run == true
+        run: npm publish --provenance --access public --dry-run
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish to npm
+        if: inputs.dry-run != true
+        run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Create git tag
+        if: github.event_name == 'workflow_dispatch' && inputs.dry-run != true
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "v${{ inputs.version }}" -m "Release v${{ inputs.version }}"
+          git push origin "v${{ inputs.version }}"
+
       - name: Create GitHub Release
+        if: inputs.dry-run != true
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ github.event_name == 'workflow_dispatch' && format('v{0}', inputs.version) || github.ref_name }}
           generate_release_notes: true
