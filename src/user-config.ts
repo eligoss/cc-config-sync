@@ -2,29 +2,26 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
 
-const CONFIG_PATH = join(homedir(), ".cc-config-sync.json");
+export const USER_CONFIG_PATH = join(homedir(), ".cc-config-sync.json");
 
-export function getUserConfigRepo(): string | null {
-  if (!existsSync(CONFIG_PATH)) return null;
+function readConfigFile(): Record<string, unknown> {
   try {
-    const raw = readFileSync(CONFIG_PATH, "utf-8");
-    const parsed = JSON.parse(raw) as { repo?: string };
-    return parsed.repo ?? null;
+    return JSON.parse(readFileSync(USER_CONFIG_PATH, "utf-8")) as Record<string, unknown>;
   } catch {
-    return null;
+    return {};
   }
 }
 
-export function setUserConfigRepo(repoPath: string): void {
-  const existing = existsSync(CONFIG_PATH)
-    ? (JSON.parse(readFileSync(CONFIG_PATH, "utf-8")) as Record<string, unknown>)
-    : {};
-  writeFileSync(
-    CONFIG_PATH,
-    JSON.stringify({ ...existing, repo: repoPath }, null, 2) + "\n",
-  );
+export function getUserConfigRepo(): string | null {
+  if (!existsSync(USER_CONFIG_PATH)) return null;
+  const parsed = readConfigFile() as { repo?: string };
+  return parsed.repo ?? null;
 }
 
-export function getUserConfigPath(): string {
-  return CONFIG_PATH;
+export function setUserConfigRepo(repoPath: string): void {
+  const existing = readConfigFile();
+  writeFileSync(
+    USER_CONFIG_PATH,
+    JSON.stringify({ ...existing, repo: repoPath }, null, 2) + "\n",
+  );
 }

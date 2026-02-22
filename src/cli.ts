@@ -21,8 +21,13 @@ program
   .version(version)
   .option("--repo <path>", "Path to the sync repo (or set CLAUDE_SYNC_REPO env var)")
   .hook("preAction", (thisCommand) => {
-    // The config command manages settings and doesn't need a repo path
-    if (thisCommand.name() === "config") return;
+    // Walk the command hierarchy: subcommands report their own name (e.g. "set-repo"),
+    // so we need to check if any ancestor is the "config" command.
+    let cmd: Command | null = thisCommand;
+    while (cmd) {
+      if (cmd.name() === "config") return;
+      cmd = cmd.parent;
+    }
 
     const repoPath =
       program.opts().repo || process.env.CLAUDE_SYNC_REPO || getUserConfigRepo();

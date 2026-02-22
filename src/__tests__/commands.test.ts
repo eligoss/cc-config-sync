@@ -402,36 +402,41 @@ describe("configSetRepoCommand", () => {
     const { configSetRepoCommand } = await import("../commands/config.js");
     const { getUserConfigRepo } = await import("../user-config.js");
 
-    configSetRepoCommand(tmpHome);
-
-    expect(getUserConfigRepo()).toBe(tmpHome);
+    // Use a distinct subdir as the repo path (not tmpHome itself)
+    const repoPath = mkdtempSync(join(tmpdir(), "cc-repo-arg-"));
+    try {
+      configSetRepoCommand(repoPath);
+      expect(getUserConfigRepo()).toBe(repoPath);
+    } finally {
+      rmSync(repoPath, { recursive: true, force: true });
+    }
   });
 
   it("configSetRepoCommand_nonexistentPath_savesWithWarning", async () => {
     const { configSetRepoCommand } = await import("../commands/config.js");
     const { getUserConfigRepo } = await import("../user-config.js");
 
-    const logs: string[] = [];
-    vi.spyOn(console, "log").mockImplementation((msg: string) => logs.push(msg ?? ""));
+    const errors: string[] = [];
+    vi.spyOn(console, "error").mockImplementation((msg: string) => errors.push(msg ?? ""));
 
     const fakePath = join(tmpHome, "nonexistent-repo");
     configSetRepoCommand(fakePath);
 
     vi.restoreAllMocks();
-    expect(logs.some((l) => l.toLowerCase().includes("warning"))).toBe(true);
+    expect(errors.some((l) => l.toLowerCase().includes("warning"))).toBe(true);
     expect(getUserConfigRepo()).toBe(fakePath);
   });
 
   it("configShowCommand_noConfig_printsHint", async () => {
     const { configShowCommand } = await import("../commands/config.js");
 
-    const logs: string[] = [];
-    vi.spyOn(console, "log").mockImplementation((msg: string) => logs.push(msg ?? ""));
+    const errors: string[] = [];
+    vi.spyOn(console, "error").mockImplementation((msg: string) => errors.push(msg ?? ""));
 
     configShowCommand();
 
     vi.restoreAllMocks();
-    expect(logs.some((l) => l.includes("config set-repo"))).toBe(true);
+    expect(errors.some((l) => l.includes("config set-repo"))).toBe(true);
   });
 
   it("configShowCommand_withConfig_printsRepo", async () => {

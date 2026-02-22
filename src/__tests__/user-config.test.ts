@@ -55,11 +55,10 @@ describe("user-config", () => {
   });
 
   it("setUserConfigRepo_newFile_createsFile", async () => {
-    const { setUserConfigRepo, getUserConfigPath } = await import("../user-config.js");
+    const { setUserConfigRepo, USER_CONFIG_PATH } = await import("../user-config.js");
     setUserConfigRepo("/my/repo");
-    const configPath = getUserConfigPath();
-    expect(existsSync(configPath)).toBe(true);
-    const content = JSON.parse(readFileSync(configPath, "utf-8")) as { repo: string };
+    expect(existsSync(USER_CONFIG_PATH)).toBe(true);
+    const content = JSON.parse(readFileSync(USER_CONFIG_PATH, "utf-8")) as { repo: string };
     expect(content.repo).toBe("/my/repo");
   });
 
@@ -74,5 +73,15 @@ describe("user-config", () => {
     };
     expect(content.repo).toBe("/new/repo");
     expect(content.extra).toBe("keep");
+  });
+
+  it("setUserConfigRepo_malformedExistingFile_overwritesSafely", async () => {
+    const configPath = join(fakeHome, ".cc-config-sync.json");
+    writeFileSync(configPath, "not-valid-json");
+    const { setUserConfigRepo } = await import("../user-config.js");
+    // Should not throw — falls back to {} and writes the new repo path
+    setUserConfigRepo("/new/repo");
+    const content = JSON.parse(readFileSync(configPath, "utf-8")) as { repo: string };
+    expect(content.repo).toBe("/new/repo");
   });
 });
