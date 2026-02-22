@@ -1,18 +1,8 @@
-import { createInterface } from "node:readline";
 import { readdirSync, unlinkSync } from "node:fs";
 import { dirname, join, basename } from "node:path";
-import { getCurrentMachineConfig } from "../machine.js";
+import { requireMachineConfig } from "../machine.js";
 import { getConfigFiles } from "../paths.js";
-
-function ask(question: string): Promise<string> {
-  const rl = createInterface({ input: process.stdin, output: process.stdout });
-  return new Promise((resolve) => {
-    rl.question(question, (answer) => {
-      rl.close();
-      resolve(answer.trim().toLowerCase());
-    });
-  });
-}
+import { ask } from "../prompt.js";
 
 function findBackupFiles(dirs: Set<string>): string[] {
   const backups: string[] = [];
@@ -32,11 +22,7 @@ function findBackupFiles(dirs: Set<string>): string[] {
 }
 
 export async function cleanBackupsCommand(): Promise<void> {
-  const machine = getCurrentMachineConfig();
-  if (!machine) {
-    console.error("No configuration found for this machine. Run `npm run init` first.");
-    process.exit(1);
-  }
+  const machine = requireMachineConfig();
 
   const files = getConfigFiles(machine.name, machine.config);
   const dirs = new Set(files.map((f) => dirname(f.localPath)));

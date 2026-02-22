@@ -30,7 +30,12 @@ export function loadConfig(): SyncConfig {
     return { machines: {} };
   }
   const raw = readFileSync(configFile, "utf-8");
-  return JSON.parse(raw) as SyncConfig;
+  try {
+    return JSON.parse(raw) as SyncConfig;
+  } catch {
+    console.error("Error: sync.config.json is malformed. Please fix or delete it.");
+    process.exit(1);
+  }
 }
 
 export function saveConfig(config: SyncConfig): void {

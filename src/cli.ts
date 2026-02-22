@@ -7,6 +7,7 @@ import { listCommand } from "./commands/list.js";
 import { initCommand } from "./commands/init.js";
 import { addProjectCommand } from "./commands/add-project.js";
 import { removeProjectCommand } from "./commands/remove-project.js";
+import { renameProjectCommand } from "./commands/rename-project.js";
 import { cleanBackupsCommand } from "./commands/clean-backups.js";
 import { version } from "./version.js";
 
@@ -43,6 +44,7 @@ program
   .option("-p, --project <name>", "Only push configs for a specific project")
   .option("--global-only", "Only push global configs")
   .option("-y, --yes", "Apply all changes without prompting")
+  .option("--dry-run", "Show what would be applied without copying files or creating backups")
   .action(pushCommand);
 
 program
@@ -70,6 +72,13 @@ program
   .description("Remove a project from tracking")
   .argument("<name>", "Project name")
   .action(removeProjectCommand);
+
+program
+  .command("rename-project")
+  .description("Rename a tracked project")
+  .argument("<old-name>", "Current project name")
+  .argument("<new-name>", "New project name")
+  .action(renameProjectCommand);
 
 program
   .command("clean-backups")

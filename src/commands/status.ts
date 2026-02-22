@@ -1,4 +1,4 @@
-import { getCurrentMachineConfig } from "../machine.js";
+import { requireMachineConfig } from "../machine.js";
 import { getConfigFiles } from "../paths.js";
 import { compareFile } from "../diff.js";
 import { filterConfigFiles } from "../filter.js";
@@ -28,11 +28,7 @@ interface StatusOptions {
 }
 
 export function statusCommand(options: StatusOptions): void {
-  const machine = getCurrentMachineConfig();
-  if (!machine) {
-    console.error("No configuration found for this machine. Run `npm run init` first.");
-    process.exit(1);
-  }
+  const machine = requireMachineConfig();
 
   let files = getConfigFiles(machine.name, machine.config);
   files = filterConfigFiles(files, { project: options.project, globalOnly: options.globalOnly });

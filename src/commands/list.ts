@@ -1,13 +1,9 @@
-import { getCurrentMachineConfig } from "../machine.js";
+import { requireMachineConfig } from "../machine.js";
 import { getConfigFiles } from "../paths.js";
 import { fileExists } from "../files.js";
 
 export function listCommand(): void {
-  const machine = getCurrentMachineConfig();
-  if (!machine) {
-    console.error("No configuration found for this machine. Run `npm run init` first.");
-    process.exit(1);
-  }
+  const machine = requireMachineConfig();
 
   const files = getConfigFiles(machine.name, machine.config);
 

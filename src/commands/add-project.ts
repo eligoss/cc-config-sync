@@ -2,15 +2,24 @@ import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { getMachineName } from "../machine.js";
 import { loadConfig, saveConfig } from "../config.js";
+import { isValidProjectName } from "../validation.js";
 
 export function addProjectCommand(name: string, projectPath: string): void {
+  if (!isValidProjectName(name)) {
+    console.error(
+      `Invalid project name "${name}". Names must be non-empty and must not contain ` +
+        `'/', '\\\\', or '..'.`,
+    );
+    process.exit(1);
+  }
+
   const config = loadConfig();
   const machineName = getMachineName();
   const machineConfig = config.machines[machineName];
 
   if (!machineConfig) {
     console.error(
-      `No configuration found for machine "${machineName}". Run \`npm run init\` first.`,
+      `No configuration found for machine "${machineName}". Run \`cc-config-sync init\` first.`,
     );
     process.exit(1);
   }

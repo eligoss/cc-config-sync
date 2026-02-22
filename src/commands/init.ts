@@ -1,9 +1,12 @@
 import { createInterface } from "node:readline";
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
+import { hostname, homedir } from "node:os";
 import { getMachineName } from "../machine.js";
 import { loadConfig, saveConfig } from "../config.js";
 
+// init uses its own ask() because it supports optional defaultValue display,
+// which differs from the shared ask() in prompt.ts
 function ask(question: string, defaultValue?: string): Promise<string> {
   const rl = createInterface({ input: process.stdin, output: process.stdout });
   const prompt = defaultValue ? `${question} [${defaultValue}]: ` : `${question}: `;
@@ -18,10 +21,22 @@ function ask(question: string, defaultValue?: string): Promise<string> {
 export async function initCommand(): Promise<void> {
   const config = loadConfig();
   const defaultName = getMachineName();
+  const systemHostname = hostname();
 
   console.log("Claude Config Sync — Machine Setup\n");
 
   const machineName = await ask("Machine name", defaultName);
+
+  // Warn if the user chose a name different from the system hostname.
+  // Other commands use os.hostname() for lookup, so a mismatch means the
+  // machine config won't be found unless the user knows to set CLAUDE_SYNC_REPO
+  // and always uses this custom name consistently.
+  if (machineName !== systemHostname) {
+    console.log(
+      `Warning: Your system hostname is '${systemHostname}'. Using a different name means` +
+        ` other commands won't find this machine unless you rename it.`,
+    );
+  }
 
   const existingConfig = config.machines[machineName];
   if (existingConfig) {
@@ -33,7 +48,8 @@ export async function initCommand(): Promise<void> {
     }
   }
 
-  const defaultGlobal = existingConfig?.globalConfigPath || `${process.env.HOME}/.claude`;
+  // Use os.homedir() instead of process.env.HOME for cross-platform reliability
+  const defaultGlobal = existingConfig?.globalConfigPath || `${homedir()}/.claude`;
   const globalConfigPath = await ask("Global config path (~/.claude)", defaultGlobal);
 
   if (!existsSync(globalConfigPath)) {

@@ -1,32 +1,19 @@
-import { createInterface } from "node:readline";
-import { getCurrentMachineConfig } from "../machine.js";
+import { requireMachineConfig } from "../machine.js";
 import { getConfigFiles } from "../paths.js";
 import { fileExists, copyFileWithDir, backupFile, filesAreIdentical } from "../files.js";
 import { getUnifiedDiff } from "../diff.js";
 import { filterConfigFiles } from "../filter.js";
-
-function ask(question: string): Promise<string> {
-  const rl = createInterface({ input: process.stdin, output: process.stdout });
-  return new Promise((resolve) => {
-    rl.question(question, (answer) => {
-      rl.close();
-      resolve(answer.trim().toLowerCase());
-    });
-  });
-}
+import { ask } from "../prompt.js";
 
 interface PushOptions {
   project?: string;
   globalOnly?: boolean;
   yes?: boolean;
+  dryRun?: boolean;
 }
 
 export async function pushCommand(options: PushOptions): Promise<void> {
-  const machine = getCurrentMachineConfig();
-  if (!machine) {
-    console.error("No configuration found for this machine. Run `npm run init` first.");
-    process.exit(1);
-  }
+  const machine = requireMachineConfig();
 
   let files = getConfigFiles(machine.name, machine.config);
   files = filterConfigFiles(files, { project: options.project, globalOnly: options.globalOnly });
@@ -35,7 +22,9 @@ export async function pushCommand(options: PushOptions): Promise<void> {
   let skipped = 0;
   let applyAll = options.yes ?? false;
 
-  console.log(`Pushing configs to machine: ${machine.name}\n`);
+  console.log(
+    `${options.dryRun ? "[DRY RUN] " : ""}Pushing configs to machine: ${machine.name}\n`,
+  );
 
   for (const file of files) {
     if (!fileExists(file.repoPath)) {
@@ -57,6 +46,13 @@ export async function pushCommand(options: PushOptions): Promise<void> {
       console.log(diff || "(files differ but diff unavailable)");
     } else {
       console.log(`\n  new   ${file.label} (will be created)`);
+    }
+
+    if (options.dryRun) {
+      // In dry-run mode, just report what would happen without touching files
+      console.log(`  would push  ${file.label}`);
+      pushed++;
+      continue;
     }
 
     if (!applyAll) {
@@ -83,5 +79,9 @@ export async function pushCommand(options: PushOptions): Promise<void> {
     pushed++;
   }
 
-  console.log(`\nDone: ${pushed} pushed, ${skipped} skipped.`);
+  if (options.dryRun) {
+    console.log(`\nDone (dry run): ${pushed} would be pushed, ${skipped} skipped.`);
+  } else {
+    console.log(`\nDone: ${pushed} pushed, ${skipped} skipped.`);
+  }
 }
