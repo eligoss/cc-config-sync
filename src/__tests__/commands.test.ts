@@ -14,6 +14,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { mkdtempSync, writeFileSync, readFileSync, mkdirSync, existsSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
+import { spawnSync } from "node:child_process";
 
 // Stable fake hostname used throughout tests
 const FAKE_HOST = "test-machine";
@@ -524,5 +525,122 @@ describe("renameProjectCommand", () => {
     renameProjectCommand("old-app", "new-app");
     expect(exitSpy).toHaveBeenCalledWith(1);
     exitSpy.mockRestore();
+  });
+});
+
+// ── isConfigSubcommand (preAction guard) ──────────────────────────────────
+// Import from cli-utils.ts — avoids triggering program.parse() that lives in cli.ts
+
+describe("isConfigSubcommand", () => {
+  it("isConfigSubcommand_configCommand_returnsTrue", async () => {
+    const { Command } = await import("commander");
+    const { isConfigSubcommand } = await import("../cli-utils.js");
+
+    const root = new Command("cc-config-sync");
+    const config = new Command("config");
+    root.addCommand(config);
+
+    expect(isConfigSubcommand(config)).toBe(true);
+  });
+
+  it("isConfigSubcommand_setRepoSubcommand_returnsTrue", async () => {
+    const { Command } = await import("commander");
+    const { isConfigSubcommand } = await import("../cli-utils.js");
+
+    const root = new Command("cc-config-sync");
+    const config = new Command("config");
+    const setRepo = new Command("set-repo");
+    config.addCommand(setRepo);
+    root.addCommand(config);
+
+    expect(isConfigSubcommand(setRepo)).toBe(true);
+  });
+
+  it("isConfigSubcommand_pullCommand_returnsFalse", async () => {
+    const { Command } = await import("commander");
+    const { isConfigSubcommand } = await import("../cli-utils.js");
+
+    const root = new Command("cc-config-sync");
+    const pull = new Command("pull");
+    root.addCommand(pull);
+
+    expect(isConfigSubcommand(pull)).toBe(false);
+  });
+
+  it("isConfigSubcommand_rootCommand_returnsFalse", async () => {
+    const { Command } = await import("commander");
+    const { isConfigSubcommand } = await import("../cli-utils.js");
+
+    const root = new Command("cc-config-sync");
+
+    expect(isConfigSubcommand(root)).toBe(false);
+  });
+});
+
+// ── CLI subprocess integration (preAction guard end-to-end) ───────────────
+
+/** Build a clean env: inherit process.env, set HOME to an isolated tmpdir,
+ *  and remove CLAUDE_SYNC_REPO so no ambient config leaks into the subprocess. */
+function isolatedEnv(tmpHome: string): NodeJS.ProcessEnv {
+  // Destructure to omit CLAUDE_SYNC_REPO — avoids leaking any user-set repo path
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { CLAUDE_SYNC_REPO: _omit, ...rest } = process.env;
+  return { ...rest, HOME: tmpHome };
+}
+
+describe("CLI preAction guard (subprocess)", () => {
+  let tmpHome: string;
+  const distCli = join(process.cwd(), "dist", "cli.js");
+
+  beforeEach(() => {
+    tmpHome = mkdtempSync(join(tmpdir(), "cc-home-"));
+  });
+
+  afterEach(() => {
+    rmSync(tmpHome, { recursive: true, force: true });
+  });
+
+  it("configSetRepo_noRepoConfigured_exitCode0", () => {
+    // Runs the built binary — requires `npm run build` to have been run.
+    // Skips gracefully if dist/cli.js is missing (e.g. fresh checkout before build).
+    if (!existsSync(distCli)) return;
+
+    const repoArg = mkdtempSync(join(tmpdir(), "cc-repo-sub-"));
+    try {
+      const result = spawnSync("node", [distCli, "config", "set-repo", repoArg], {
+        env: isolatedEnv(tmpHome),
+        encoding: "utf-8",
+      });
+
+      // Must not exit with the "repo required" error (code 1 from preAction)
+      expect(result.status).toBe(0);
+      expect(result.stderr).not.toContain("sync repo path required");
+    } finally {
+      rmSync(repoArg, { recursive: true, force: true });
+    }
+  });
+
+  it("configShow_noRepoConfigured_exitCode0", () => {
+    if (!existsSync(distCli)) return;
+
+    const result = spawnSync("node", [distCli, "config", "show"], {
+      env: isolatedEnv(tmpHome),
+      encoding: "utf-8",
+    });
+
+    expect(result.status).toBe(0);
+    expect(result.stderr).not.toContain("sync repo path required");
+  });
+
+  it("pull_noRepoConfigured_exitCode1WithHint", () => {
+    if (!existsSync(distCli)) return;
+
+    const result = spawnSync("node", [distCli, "pull"], {
+      env: isolatedEnv(tmpHome),
+      encoding: "utf-8",
+    });
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain("config set-repo");
   });
 });

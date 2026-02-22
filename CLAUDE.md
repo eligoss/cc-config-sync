@@ -28,7 +28,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `cc-config-sync add-project <name> <path>` | Add a project to track                                               |
 | `cc-config-sync remove-project <name>`     | Remove a project from tracking                                       |
 | `cc-config-sync clean-backups`             | Find and delete backup files created by push                         |
-| `cc-config-sync config set-repo <path>`    | Save default sync repo path to `~/.cc-config-sync.json`             |
+| `cc-config-sync config set-repo <path>`    | Save default sync repo path to `~/.cc-config-sync.json`              |
 | `cc-config-sync config show`               | Show current config (saved repo path and config file location)       |
 
 ## Development Scripts

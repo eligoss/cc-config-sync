@@ -20,8 +20,5 @@ export function getUserConfigRepo(): string | null {
 
 export function setUserConfigRepo(repoPath: string): void {
   const existing = readConfigFile();
-  writeFileSync(
-    USER_CONFIG_PATH,
-    JSON.stringify({ ...existing, repo: repoPath }, null, 2) + "\n",
-  );
+  writeFileSync(USER_CONFIG_PATH, JSON.stringify({ ...existing, repo: repoPath }, null, 2) + "\n");
 }

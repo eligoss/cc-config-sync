@@ -11,6 +11,7 @@ import { renameProjectCommand } from "./commands/rename-project.js";
 import { cleanBackupsCommand } from "./commands/clean-backups.js";
 import { configSetRepoCommand, configShowCommand } from "./commands/config.js";
 import { getUserConfigRepo } from "./user-config.js";
+import { isConfigSubcommand } from "./cli-utils.js";
 import { version } from "./version.js";
 
 const program = new Command();
@@ -20,17 +21,12 @@ program
   .description("Sync Claude Code configurations across machines")
   .version(version)
   .option("--repo <path>", "Path to the sync repo (or set CLAUDE_SYNC_REPO env var)")
-  .hook("preAction", (thisCommand) => {
-    // Walk the command hierarchy: subcommands report their own name (e.g. "set-repo"),
-    // so we need to check if any ancestor is the "config" command.
-    let cmd: Command | null = thisCommand;
-    while (cmd) {
-      if (cmd.name() === "config") return;
-      cmd = cmd.parent;
-    }
+  // Commander passes (thisCommand=root, actionCommand=leaf) to root-level preAction hooks.
+  // We check the actionCommand (the command actually being run) to skip the config group.
+  .hook("preAction", (_thisCommand, actionCommand) => {
+    if (isConfigSubcommand(actionCommand)) return;
 
-    const repoPath =
-      program.opts().repo || process.env.CLAUDE_SYNC_REPO || getUserConfigRepo();
+    const repoPath = program.opts().repo || process.env.CLAUDE_SYNC_REPO || getUserConfigRepo();
     if (!repoPath) {
       console.error(
         "Error: sync repo path required. Use --repo <path>, set CLAUDE_SYNC_REPO env var,\n" +
