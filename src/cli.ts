@@ -9,6 +9,9 @@ import { addProjectCommand } from "./commands/add-project.js";
 import { removeProjectCommand } from "./commands/remove-project.js";
 import { renameProjectCommand } from "./commands/rename-project.js";
 import { cleanBackupsCommand } from "./commands/clean-backups.js";
+import { configSetRepoCommand, configShowCommand } from "./commands/config.js";
+import { getUserConfigRepo } from "./user-config.js";
+import { isConfigSubcommand } from "./cli-utils.js";
 import { version } from "./version.js";
 
 const program = new Command();
@@ -18,11 +21,16 @@ program
   .description("Sync Claude Code configurations across machines")
   .version(version)
   .option("--repo <path>", "Path to the sync repo (or set CLAUDE_SYNC_REPO env var)")
-  .hook("preAction", () => {
-    const repoPath = program.opts().repo || process.env.CLAUDE_SYNC_REPO;
+  // Commander passes (thisCommand=root, actionCommand=leaf) to root-level preAction hooks.
+  // We check the actionCommand (the command actually being run) to skip the config group.
+  .hook("preAction", (_thisCommand, actionCommand) => {
+    if (isConfigSubcommand(actionCommand)) return;
+
+    const repoPath = program.opts().repo || process.env.CLAUDE_SYNC_REPO || getUserConfigRepo();
     if (!repoPath) {
       console.error(
-        "Error: sync repo path required. Use --repo <path> or set CLAUDE_SYNC_REPO env var.",
+        "Error: sync repo path required. Use --repo <path>, set CLAUDE_SYNC_REPO env var,\n" +
+          "or run: cc-config-sync config set-repo <path>",
       );
       process.exit(1);
     }
@@ -84,5 +92,15 @@ program
   .command("clean-backups")
   .description("Find and delete backup files created by push")
   .action(cleanBackupsCommand);
+
+const configCmd = program.command("config").description("Manage cc-config-sync settings");
+
+configCmd
+  .command("set-repo")
+  .description("Set the default sync repo path")
+  .argument("<path>", "Path to sync repo")
+  .action(configSetRepoCommand);
+
+configCmd.command("show").description("Show current config").action(configShowCommand);
 
 program.parse();
