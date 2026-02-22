@@ -65,22 +65,22 @@ cc-config-sync --version
 # 1. Create a sync repo (or clone an existing one)
 mkdir ~/claude-sync && cd ~/claude-sync && git init
 
-# 2. Set up your machine (interactive)
-cc-config-sync --repo ~/claude-sync init
+# 2. Save the repo path so you never have to type --repo again
+cc-config-sync config set-repo ~/claude-sync
 
-# 3. Pull your local configs into the sync repo
-cc-config-sync --repo ~/claude-sync pull
+# 3. Set up your machine (interactive)
+cc-config-sync init
 
-# 4. Check what's different
-cc-config-sync --repo ~/claude-sync status
-```
-
-**Tip:** Set `CLAUDE_SYNC_REPO` to avoid passing `--repo` every time:
-
-```bash
-export CLAUDE_SYNC_REPO=~/claude-sync
+# 4. Pull your local configs into the sync repo
 cc-config-sync pull
+
+# 5. Check what's different
+cc-config-sync status
 ```
+
+**Tip:** `cc-config-sync config set-repo <path>` saves the repo path to `~/.cc-config-sync.json`.
+After that, all commands just work in any terminal without additional flags.
+You can still override it per-command with `--repo <path>` or the `CLAUDE_SYNC_REPO` env var.
 
 ## Commands
 
@@ -143,6 +143,29 @@ cc-config-sync remove-project my-app
 ### `clean-backups`
 
 Find and delete backup files created by `push`.
+
+### `config set-repo <path>`
+
+Save the sync repo path persistently so you don't have to pass `--repo` or set `CLAUDE_SYNC_REPO` every time.
+
+```bash
+cc-config-sync config set-repo ~/claude-sync
+```
+
+The path is stored in `~/.cc-config-sync.json`. Resolution order (highest priority first):
+
+1. `--repo <path>` flag
+2. `CLAUDE_SYNC_REPO` env var
+3. `~/.cc-config-sync.json` (saved with `config set-repo`)
+4. Error if none found
+
+### `config show`
+
+Display the currently saved repo path and config file location.
+
+```bash
+cc-config-sync config show
+```
 
 ## Configuration
 

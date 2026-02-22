@@ -379,6 +379,76 @@ describe("removeProjectCommand", () => {
   });
 });
 
+// ── config command ────────────────────────────────────────────────────────
+
+describe("configSetRepoCommand", () => {
+  let tmpHome: string;
+
+  beforeEach(() => {
+    tmpHome = mkdtempSync(join(tmpdir(), "cc-home-"));
+    vi.resetModules();
+    // Override homedir so ~/.cc-config-sync.json lands in our temp dir
+    vi.doMock("node:os", async (importOriginal) => {
+      const actual = await importOriginal<typeof import("node:os")>();
+      return { ...actual, homedir: () => tmpHome, hostname: () => FAKE_HOST };
+    });
+  });
+
+  afterEach(() => {
+    rmSync(tmpHome, { recursive: true, force: true });
+  });
+
+  it("configSetRepoCommand_validPath_savesConfig", async () => {
+    const { configSetRepoCommand } = await import("../commands/config.js");
+    const { getUserConfigRepo } = await import("../user-config.js");
+
+    configSetRepoCommand(tmpHome);
+
+    expect(getUserConfigRepo()).toBe(tmpHome);
+  });
+
+  it("configSetRepoCommand_nonexistentPath_savesWithWarning", async () => {
+    const { configSetRepoCommand } = await import("../commands/config.js");
+    const { getUserConfigRepo } = await import("../user-config.js");
+
+    const logs: string[] = [];
+    vi.spyOn(console, "log").mockImplementation((msg: string) => logs.push(msg ?? ""));
+
+    const fakePath = join(tmpHome, "nonexistent-repo");
+    configSetRepoCommand(fakePath);
+
+    vi.restoreAllMocks();
+    expect(logs.some((l) => l.toLowerCase().includes("warning"))).toBe(true);
+    expect(getUserConfigRepo()).toBe(fakePath);
+  });
+
+  it("configShowCommand_noConfig_printsHint", async () => {
+    const { configShowCommand } = await import("../commands/config.js");
+
+    const logs: string[] = [];
+    vi.spyOn(console, "log").mockImplementation((msg: string) => logs.push(msg ?? ""));
+
+    configShowCommand();
+
+    vi.restoreAllMocks();
+    expect(logs.some((l) => l.includes("config set-repo"))).toBe(true);
+  });
+
+  it("configShowCommand_withConfig_printsRepo", async () => {
+    const { configSetRepoCommand, configShowCommand } = await import("../commands/config.js");
+
+    configSetRepoCommand(tmpHome);
+
+    const logs: string[] = [];
+    vi.spyOn(console, "log").mockImplementation((msg: string) => logs.push(msg ?? ""));
+
+    configShowCommand();
+
+    vi.restoreAllMocks();
+    expect(logs.some((l) => l.includes(tmpHome))).toBe(true);
+  });
+});
+
 // ── rename-project ────────────────────────────────────────────────────────
 
 describe("renameProjectCommand", () => {
