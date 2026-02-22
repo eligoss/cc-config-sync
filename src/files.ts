@@ -5,10 +5,6 @@ export function fileExists(path: string): boolean {
   return existsSync(path);
 }
 
-export function readFile(path: string): string {
-  return readFileSync(path, "utf-8");
-}
-
 export function copyFileWithDir(src: string, dest: string): void {
   const dir = dirname(dest);
   mkdirSync(dir, { recursive: true });

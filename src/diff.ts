@@ -1,5 +1,5 @@
-import { execSync } from "node:child_process";
-import { fileExists, getFileMtime } from "./files.js";
+import { execFileSync } from "node:child_process";
+import { filesAreIdentical, fileExists, getFileMtime } from "./files.js";
 import type { ConfigFile, DiffResult, FileStatus } from "./types.js";
 
 export function getFileStatus(file: ConfigFile): FileStatus {
@@ -10,17 +10,14 @@ export function getFileStatus(file: ConfigFile): FileStatus {
   if (localExists && !repoExists) return "local-only";
   if (!localExists && repoExists) return "repo-only";
 
-  try {
-    execSync(`diff -q "${file.localPath}" "${file.repoPath}"`, { stdio: "pipe" });
-    return "identical";
-  } catch {
-    return "modified";
-  }
+  // Use filesAreIdentical (in-process read) instead of spawning diff -q
+  return filesAreIdentical(file.localPath, file.repoPath) ? "identical" : "modified";
 }
 
 export function getUnifiedDiff(fromPath: string, toPath: string): string {
   try {
-    execSync(`diff -u "${fromPath}" "${toPath}"`, { stdio: "pipe" });
+    // execFileSync avoids shell interpretation; args are passed directly to diff
+    execFileSync("diff", ["-u", fromPath, toPath], { stdio: "pipe" });
     return "";
   } catch (e: unknown) {
     const error = e as { stdout?: Buffer; status?: number };

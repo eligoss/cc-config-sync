@@ -13,3 +13,16 @@ export function getCurrentMachineConfig(): { name: string; config: MachineConfig
   if (!config) return null;
   return { name, config };
 }
+
+/**
+ * Like getCurrentMachineConfig, but exits with a friendly error if no config is found.
+ * Use this in commands that require a configured machine.
+ */
+export function requireMachineConfig(): { name: string; config: MachineConfig } {
+  const machine = getCurrentMachineConfig();
+  if (!machine) {
+    console.error("No configuration found for this machine. Run `cc-config-sync init` first.");
+    process.exit(1);
+  }
+  return machine;
+}
