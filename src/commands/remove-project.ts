@@ -33,9 +33,7 @@ export async function removeProjectCommand(name: string): Promise<void> {
   // Offer to delete the corresponding directory in the sync repo
   const repoProjectDir = join(getConfigsDir(), machineName, "projects", name);
   if (existsSync(repoProjectDir)) {
-    const answer = await ask(
-      `\nAlso delete repo directory ${repoProjectDir}? [y/N] `,
-    );
+    const answer = await ask(`\nAlso delete repo directory ${repoProjectDir}? [y/N] `);
     if (answer === "y" || answer === "yes") {
       rmSync(repoProjectDir, { recursive: true });
       console.log(`Deleted ${repoProjectDir}`);

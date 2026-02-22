@@ -21,9 +21,7 @@ export function getCurrentMachineConfig(): { name: string; config: MachineConfig
 export function requireMachineConfig(): { name: string; config: MachineConfig } {
   const machine = getCurrentMachineConfig();
   if (!machine) {
-    console.error(
-      "No configuration found for this machine. Run `cc-config-sync init` first.",
-    );
+    console.error("No configuration found for this machine. Run `cc-config-sync init` first.");
     process.exit(1);
   }
   return machine;

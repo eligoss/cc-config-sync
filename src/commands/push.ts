@@ -22,9 +22,7 @@ export async function pushCommand(options: PushOptions): Promise<void> {
   let skipped = 0;
   let applyAll = options.yes ?? false;
 
-  console.log(
-    `${options.dryRun ? "[DRY RUN] " : ""}Pushing configs to machine: ${machine.name}\n`,
-  );
+  console.log(`${options.dryRun ? "[DRY RUN] " : ""}Pushing configs to machine: ${machine.name}\n`);
 
   for (const file of files) {
     if (!fileExists(file.repoPath)) {

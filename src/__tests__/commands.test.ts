@@ -11,14 +11,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import {
-  mkdtempSync,
-  writeFileSync,
-  readFileSync,
-  mkdirSync,
-  existsSync,
-  rmSync,
-} from "node:fs";
+import { mkdtempSync, writeFileSync, readFileSync, mkdirSync, existsSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
@@ -326,9 +319,7 @@ describe("addProjectCommand", () => {
   it("addProjectCommand_invalidName_exitsWithError", async () => {
     const { addProjectCommand } = await import("../commands/add-project.js");
 
-    const exitSpy = vi
-      .spyOn(process, "exit")
-      .mockImplementation(() => undefined as never);
+    const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => undefined as never);
 
     addProjectCommand("../bad/name", env.projectDir);
     expect(exitSpy).toHaveBeenCalledWith(1);
@@ -338,9 +329,7 @@ describe("addProjectCommand", () => {
   it("addProjectCommand_nameWithSlash_exitsWithError", async () => {
     const { addProjectCommand } = await import("../commands/add-project.js");
 
-    const exitSpy = vi
-      .spyOn(process, "exit")
-      .mockImplementation(() => undefined as never);
+    const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => undefined as never);
 
     addProjectCommand("foo/bar", env.projectDir);
     expect(exitSpy).toHaveBeenCalledWith(1);
@@ -382,9 +371,7 @@ describe("removeProjectCommand", () => {
   it("removeProjectCommand_missingProject_exitsWithError", async () => {
     const { removeProjectCommand } = await import("../commands/remove-project.js");
 
-    const exitSpy = vi
-      .spyOn(process, "exit")
-      .mockImplementation(() => undefined as never);
+    const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => undefined as never);
 
     await removeProjectCommand("nonexistent");
     expect(exitSpy).toHaveBeenCalledWith(1);
@@ -441,9 +428,7 @@ describe("renameProjectCommand", () => {
   it("renameProjectCommand_invalidNewName_exitsWithError", async () => {
     const { renameProjectCommand } = await import("../commands/rename-project.js");
 
-    const exitSpy = vi
-      .spyOn(process, "exit")
-      .mockImplementation(() => undefined as never);
+    const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => undefined as never);
 
     renameProjectCommand("old-app", "../bad");
     expect(exitSpy).toHaveBeenCalledWith(1);
@@ -459,9 +444,7 @@ describe("renameProjectCommand", () => {
 
     const { renameProjectCommand } = await import("../commands/rename-project.js");
 
-    const exitSpy = vi
-      .spyOn(process, "exit")
-      .mockImplementation(() => undefined as never);
+    const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => undefined as never);
 
     renameProjectCommand("old-app", "new-app");
     expect(exitSpy).toHaveBeenCalledWith(1);

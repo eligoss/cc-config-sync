@@ -87,9 +87,7 @@ describe("git", () => {
       const msg = "feat: add feature\n\n- bullet one\n- bullet two";
       gitCommit(msg, tmp);
 
-      const log = execSync("git log --format=%B -1", { cwd: tmp, stdio: "pipe" })
-        .toString()
-        .trim();
+      const log = execSync("git log --format=%B -1", { cwd: tmp, stdio: "pipe" }).toString().trim();
       expect(log).toBe(msg);
     });
   });
