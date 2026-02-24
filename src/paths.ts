@@ -1,3 +1,4 @@
+import { existsSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { getConfigsDir } from "./config.js";
 import type { ConfigFile, MachineConfig } from "./types.js";
@@ -28,6 +29,21 @@ export function getConfigFiles(machineName: string, machineConfig: MachineConfig
       localPath: join(machineConfig.globalConfigPath, file),
       repoPath: join(machineDir, "global", file),
     });
+  }
+
+  // Global hook scripts
+  const repoHooksDir = join(machineDir, "global", "hooks");
+  if (existsSync(repoHooksDir)) {
+    const hookNames = readdirSync(repoHooksDir)
+      .filter((f) => f.endsWith(".sh"))
+      .sort(); // deterministic order
+    for (const name of hookNames) {
+      files.push({
+        label: `global/hooks/${name}`,
+        localPath: join(machineConfig.globalConfigPath, "hooks", name),
+        repoPath: join(repoHooksDir, name),
+      });
+    }
   }
 
   // Per-project config files

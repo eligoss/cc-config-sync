@@ -1,4 +1,12 @@
-import { copyFileSync, existsSync, mkdirSync, readFileSync, renameSync, statSync } from "node:fs";
+import {
+  chmodSync,
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  renameSync,
+  statSync,
+} from "node:fs";
 import { dirname } from "node:path";
 
 export function fileExists(path: string): boolean {
@@ -22,6 +30,10 @@ export function backupFile(path: string): string | null {
 export function getFileMtime(path: string): Date | null {
   if (!existsSync(path)) return null;
   return statSync(path).mtime;
+}
+
+export function ensureExecutable(path: string): void {
+  chmodSync(path, 0o755);
 }
 
 export function filesAreIdentical(pathA: string, pathB: string): boolean {
