@@ -1,6 +1,12 @@
 import { requireMachineConfig } from "../machine.js";
 import { getConfigFiles } from "../paths.js";
-import { fileExists, copyFileWithDir, backupFile, filesAreIdentical } from "../files.js";
+import {
+  fileExists,
+  copyFileWithDir,
+  backupFile,
+  filesAreIdentical,
+  ensureExecutable,
+} from "../files.js";
 import { getUnifiedDiff } from "../diff.js";
 import { filterConfigFiles } from "../filter.js";
 import { ask } from "../prompt.js";
@@ -73,6 +79,9 @@ export async function pushCommand(options: PushOptions): Promise<void> {
     }
 
     copyFileWithDir(file.repoPath, file.localPath);
+    if (file.localPath.endsWith(".sh")) {
+      ensureExecutable(file.localPath);
+    }
     console.log(`  push  ${file.label}`);
     pushed++;
   }

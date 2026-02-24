@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { mkdtempSync, writeFileSync, existsSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, writeFileSync, existsSync, readFileSync, rmSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import {
@@ -8,6 +8,7 @@ import {
   copyFileWithDir,
   backupFile,
   getFileMtime,
+  ensureExecutable,
 } from "../files.js";
 
 describe("files", () => {
@@ -89,6 +90,16 @@ describe("files", () => {
 
     it("returns null for non-existent file", () => {
       expect(getFileMtime(join(tmp, "nope.txt"))).toBeNull();
+    });
+  });
+
+  describe("ensureExecutable", () => {
+    it("sets file mode to 0o755", () => {
+      const file = join(tmp, "hook.sh");
+      writeFileSync(file, "#!/bin/bash"); // created without +x
+      ensureExecutable(file);
+      const mode = statSync(file).mode & 0o777;
+      expect(mode).toBe(0o755);
     });
   });
 
