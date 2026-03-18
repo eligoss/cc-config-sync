@@ -22,3 +22,21 @@ export function setUserConfigRepo(repoPath: string): void {
   const existing = readConfigFile();
   writeFileSync(USER_CONFIG_PATH, JSON.stringify({ ...existing, repo: repoPath }, null, 2) + "\n");
 }
+
+export function getBackupsEnabled(): boolean {
+  const parsed = readConfigFile() as { backupsEnabled?: boolean };
+  return parsed.backupsEnabled ?? true;
+}
+
+export function setBackupsEnabled(enabled: boolean): void {
+  const existing = readConfigFile();
+  writeFileSync(
+    USER_CONFIG_PATH,
+    JSON.stringify({ ...existing, backupsEnabled: enabled }, null, 2) + "\n",
+  );
+}
+
+export function getBackupsEnabledRaw(): boolean | undefined {
+  const parsed = readConfigFile() as { backupsEnabled?: boolean };
+  return parsed.backupsEnabled;
+}
