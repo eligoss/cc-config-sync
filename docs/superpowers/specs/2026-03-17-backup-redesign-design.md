@@ -30,7 +30,7 @@ The current backup mechanism (`backupFile()`) renames files in-place by appendin
 
 Backups are written inside the sync repo under `backups/`, mirroring the structure defined by `ConfigFile.label` (e.g. `global/CLAUDE.md`, `projects/yarnie/CLAUDE.md`):
 
-```
+```text
 <repo>/
   backups/
     2026-03-17/
@@ -53,7 +53,7 @@ Backups are written inside the sync repo under `backups/`, mirroring the structu
 
 **Path mapping rule:** The backup destination for a file is constructed from the `ConfigFile` object already available in `push.ts`:
 
-```
+```text
 <repo>/backups/YYYY-MM-DD/<machine.name>/<file.label>
 ```
 
@@ -79,7 +79,7 @@ A new `backupsEnabled` boolean field is added:
 
 A new question is added **after the global config path question and before the project-adding loop** (it is part of the same config update flow, so it applies whether the user is setting up a new machine or updating an existing one):
 
-```
+```text
 Back up local files before pushing? [Y/n]:
 ```
 
@@ -98,7 +98,7 @@ Back up local files before pushing? [Y/n]:
 
 **Effective backup setting resolution:**
 
-```
+```text
 flag provided  → use flag value (true/false)
 flag absent    → use getBackupsEnabled() (defaults to true if field missing)
 ```
@@ -112,7 +112,7 @@ flag absent    → use getBackupsEnabled() (defaults to true if field missing)
 
 **Console output:**
 
-```
+```text
   backup → backups/2026-03-17/my-macbook/global/CLAUDE.md
 ```
 
@@ -122,7 +122,7 @@ Completely rewritten. No longer calls `requireMachineConfig()` — machine confi
 
 Uses `getSyncRepoPath()` to locate `<repo>/backups/`. If `backups/` does not exist or is empty, print a friendly message and exit:
 
-```
+```text
 No backup folders found in /path/to/repo/backups/.
 ```
 
@@ -132,7 +132,7 @@ No backup folders found in /path/to/repo/backups/.
 2. Prompt for confirmation.
 3. Delete all dated subdirectories recursively (using `rmSync` with `{ recursive: true }`).
 
-```
+```text
 Backup folders in /path/to/repo/backups/:
   2026-03-15/  (2 files)
   2026-03-16/  (5 files)
@@ -144,7 +144,7 @@ Delete all backups? [y/N]:
 
 Displays the backup setting alongside the repo path. When `backupsEnabled` is absent from the JSON (existing users who haven't re-run `init`), indicate the implicit default:
 
-```
+```text
 repo:    /path/to/sync-repo
 backups: enabled (default)
 config:  /Users/anton/.cc-config-sync.json
@@ -152,7 +152,7 @@ config:  /Users/anton/.cc-config-sync.json
 
 When explicitly set:
 
-```
+```text
 repo:    /path/to/sync-repo
 backups: enabled
 config:  /Users/anton/.cc-config-sync.json
