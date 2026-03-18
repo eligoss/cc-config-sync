@@ -201,6 +201,32 @@ describe("pushCommand", () => {
     // The local file should now contain the repo content (written after backup)
     expect(existsSync(localFile)).toBe(true);
     expect(readFileSync(localFile, "utf-8")).toBe("# new repo content\n");
+
+    // .gitignore created with backups/ entry
+    const gitignorePath = join(env.repo, ".gitignore");
+    expect(existsSync(gitignorePath)).toBe(true);
+    expect(readFileSync(gitignorePath, "utf-8")).toContain("backups/");
+  });
+
+  it("pushCommand_gitignoreAlreadyHasBackupsEntry_doesNotDuplicate", async () => {
+    const { pushCommand } = await import("../commands/push.js");
+
+    // Pre-create .gitignore with backups/ already present
+    writeFileSync(join(env.repo, ".gitignore"), "backups/\n");
+
+    const localFile = join(env.local, "CLAUDE.md");
+    writeFileSync(localFile, "# old local content\n");
+
+    const src = repoPath(env.repo, "global", "CLAUDE.md");
+    mkdirSync(join(env.repo, "configs", FAKE_HOST, "global"), { recursive: true });
+    writeFileSync(src, "# new repo content\n");
+
+    await pushCommand({ yes: true, backup: true });
+
+    // .gitignore should still contain backups/ but only once
+    const gitignoreContent = readFileSync(join(env.repo, ".gitignore"), "utf-8");
+    const matches = gitignoreContent.split("\n").filter((line) => line.trim() === "backups/");
+    expect(matches).toHaveLength(1);
   });
 
   it("pushCommand_noBackupFlag_skipsBackup", async () => {
