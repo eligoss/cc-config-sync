@@ -190,18 +190,17 @@ describe("pushCommand", () => {
     mkdirSync(join(env.repo, "configs", FAKE_HOST, "global"), { recursive: true });
     writeFileSync(src, "# new repo content\n");
 
-    await pushCommand({ yes: true });
+    await pushCommand({ yes: true, backup: true });
 
-    // A backup file should exist in the same directory
-    const { readdirSync } = await import("node:fs");
-    const entries = readdirSync(env.local);
-    const backup = entries.find((e) => e.includes(".backup-"));
-    expect(backup).toBeDefined();
+    // A backup file should exist in the repo under backups/<date>/<machine>/global/CLAUDE.md
+    const dateStr = new Date().toISOString().slice(0, 10);
+    const backupFile = join(env.repo, "backups", dateStr, FAKE_HOST, "global", "CLAUDE.md");
+    expect(existsSync(backupFile)).toBe(true);
+    expect(readFileSync(backupFile, "utf-8")).toBe("# old local content\n");
 
     // The local file should now contain the repo content (written after backup)
     expect(existsSync(localFile)).toBe(true);
-    const newContent = readFileSync(localFile, "utf-8");
-    expect(newContent).toBe("# new repo content\n");
+    expect(readFileSync(localFile, "utf-8")).toBe("# new repo content\n");
   });
 
   it("pushCommand_dryRun_doesNotCopyFiles", async () => {

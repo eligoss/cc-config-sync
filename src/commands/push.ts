@@ -1,19 +1,38 @@
+import { existsSync, readFileSync, appendFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { requireMachineConfig } from "../machine.js";
 import { getConfigFiles } from "../paths.js";
-import { fileExists, copyFileWithDir, backupFile, filesAreIdentical } from "../files.js";
+import { fileExists, copyFileWithDir, filesAreIdentical, backupFileToRepo } from "../files.js";
 import { getUnifiedDiff } from "../diff.js";
 import { filterConfigFiles } from "../filter.js";
 import { ask } from "../prompt.js";
+import { getBackupsEnabled } from "../user-config.js";
+import { getSyncRepoPath } from "../config.js";
 
 interface PushOptions {
   project?: string;
   globalOnly?: boolean;
   yes?: boolean;
   dryRun?: boolean;
+  backup?: boolean; // undefined = use user config; true/false = override
+}
+
+function ensureBackupsGitignored(repoRoot: string): void {
+  const gitignorePath = join(repoRoot, ".gitignore");
+  const entry = "backups/";
+  if (existsSync(gitignorePath)) {
+    const content = readFileSync(gitignorePath, "utf-8");
+    if (content.split("\n").some((line) => line.trim() === entry)) return;
+    appendFileSync(gitignorePath, `\n${entry}\n`);
+  } else {
+    writeFileSync(gitignorePath, `${entry}\n`);
+  }
 }
 
 export async function pushCommand(options: PushOptions): Promise<void> {
   const machine = requireMachineConfig();
+  const repoRoot = getSyncRepoPath();
+  const backupsEnabled = options.backup !== undefined ? options.backup : getBackupsEnabled();
 
   let files = getConfigFiles(machine.name, machine.config);
   files = filterConfigFiles(files, { project: options.project, globalOnly: options.globalOnly });
@@ -21,6 +40,7 @@ export async function pushCommand(options: PushOptions): Promise<void> {
   let pushed = 0;
   let skipped = 0;
   let applyAll = options.yes ?? false;
+  let gitignoreEnsured = false;
 
   console.log(`${options.dryRun ? "[DRY RUN] " : ""}Pushing configs to machine: ${machine.name}\n`);
 
@@ -37,7 +57,6 @@ export async function pushCommand(options: PushOptions): Promise<void> {
       continue;
     }
 
-    // Show diff if local file exists
     if (fileExists(file.localPath)) {
       console.log(`\n--- Changes for ${file.label} ---`);
       const diff = getUnifiedDiff(file.localPath, file.repoPath);
@@ -47,7 +66,6 @@ export async function pushCommand(options: PushOptions): Promise<void> {
     }
 
     if (options.dryRun) {
-      // In dry-run mode, just report what would happen without touching files
       console.log(`  would push  ${file.label}`);
       pushed++;
       continue;
@@ -64,12 +82,14 @@ export async function pushCommand(options: PushOptions): Promise<void> {
       }
     }
 
-    // Backup existing file before overwriting
-    if (fileExists(file.localPath)) {
-      const backupPath = backupFile(file.localPath);
-      if (backupPath) {
-        console.log(`  backup → ${backupPath}`);
+    if (backupsEnabled && fileExists(file.localPath)) {
+      if (!gitignoreEnsured) {
+        ensureBackupsGitignored(repoRoot);
+        gitignoreEnsured = true;
       }
+      const dateStr = new Date().toISOString().slice(0, 10);
+      backupFileToRepo(file, machine.name, repoRoot, dateStr);
+      console.log(`  backup → backups/${dateStr}/${machine.name}/${file.label}`);
     }
 
     copyFileWithDir(file.repoPath, file.localPath);

@@ -53,6 +53,10 @@ program
   .option("--global-only", "Only push global configs")
   .option("-y, --yes", "Apply all changes without prompting")
   .option("--dry-run", "Show what would be applied without copying files or creating backups")
+  .option(
+    "--[no-]backup",
+    "Override backup setting for this run (default: from ~/.cc-config-sync.json)",
+  )
   .action(pushCommand);
 
 program
