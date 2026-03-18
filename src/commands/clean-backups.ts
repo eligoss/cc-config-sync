@@ -1,59 +1,60 @@
-import { readdirSync, unlinkSync } from "node:fs";
-import { dirname, join, basename } from "node:path";
-import { requireMachineConfig } from "../machine.js";
-import { getConfigFiles } from "../paths.js";
+import { readdirSync, existsSync, rmSync } from "node:fs";
+import { join } from "node:path";
+import { getSyncRepoPath } from "../config.js";
 import { ask } from "../prompt.js";
 
-function findBackupFiles(dirs: Set<string>): string[] {
-  const backups: string[] = [];
-  for (const dir of dirs) {
-    try {
-      const entries = readdirSync(dir);
-      for (const entry of entries) {
-        if (entry.includes(".backup-")) {
-          backups.push(join(dir, entry));
-        }
-      }
-    } catch {
-      // Directory doesn't exist, skip
+function countFilesRecursive(dir: string): number {
+  let count = 0;
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    if (entry.isDirectory()) {
+      count += countFilesRecursive(join(dir, entry.name));
+    } else {
+      count++;
     }
   }
-  return backups.sort();
+  return count;
 }
 
 export async function cleanBackupsCommand(): Promise<void> {
-  const machine = requireMachineConfig();
+  const backupsDir = join(getSyncRepoPath(), "backups");
 
-  const files = getConfigFiles(machine.name, machine.config);
-  const dirs = new Set(files.map((f) => dirname(f.localPath)));
-  const backups = findBackupFiles(dirs);
-
-  if (backups.length === 0) {
-    console.log("No backup files found.");
+  if (!existsSync(backupsDir)) {
+    console.log(`No backup folders found in ${backupsDir}.`);
     return;
   }
 
-  console.log(`Found ${backups.length} backup file(s):\n`);
-  for (const backup of backups) {
-    console.log(`  ${backup}`);
+  const entries = readdirSync(backupsDir, { withFileTypes: true })
+    .filter((e) => e.isDirectory())
+    .map((e) => e.name)
+    .sort();
+
+  if (entries.length === 0) {
+    console.log(`No backup folders found in ${backupsDir}.`);
+    return;
   }
 
-  const answer = await ask(`\nDelete all ${backups.length} backup file(s)? [y/N] `);
+  console.log(`Backup folders in ${backupsDir}:\n`);
+  for (const entry of entries) {
+    const count = countFilesRecursive(join(backupsDir, entry));
+    console.log(`  ${entry}/  (${count} file${count === 1 ? "" : "s"})`);
+  }
+
+  const answer = await ask(`\nDelete all backups? [y/N] `);
   if (answer !== "y" && answer !== "yes") {
     console.log("Cancelled.");
     return;
   }
 
   let deleted = 0;
-  for (const backup of backups) {
+  for (const entry of entries) {
     try {
-      unlinkSync(backup);
-      console.log(`  deleted  ${basename(backup)}`);
+      rmSync(join(backupsDir, entry), { recursive: true });
+      console.log(`  deleted  ${entry}/`);
       deleted++;
     } catch (err) {
-      console.error(`  error    ${basename(backup)}: ${err}`);
+      console.error(`  error    ${entry}/: ${err}`);
     }
   }
 
-  console.log(`\nDone: ${deleted} backup file(s) deleted.`);
+  console.log(`\nDone: ${deleted} backup folder(s) deleted.`);
 }
