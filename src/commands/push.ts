@@ -1,5 +1,5 @@
 import { existsSync, readFileSync, appendFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, normalize, isAbsolute } from "node:path";
 import { requireMachineConfig } from "../machine.js";
 import { getConfigFiles } from "../paths.js";
 import { fileExists, copyFileWithDir, filesAreIdentical, backupFileToRepo } from "../files.js";
@@ -15,6 +15,18 @@ interface PushOptions {
   yes?: boolean;
   dryRun?: boolean;
   backup?: boolean; // undefined = use user config; true/false = override
+}
+
+function assertSafeBackupLabel(label: string): void {
+  const normalized = normalize(label).replace(/\\/g, "/");
+  if (
+    isAbsolute(label) ||
+    normalized === ".." ||
+    normalized.startsWith("../") ||
+    normalized.includes("/../")
+  ) {
+    throw new Error(`Unsafe backup label: ${label}`);
+  }
 }
 
 function ensureBackupsGitignored(repoRoot: string): void {
@@ -83,6 +95,7 @@ export async function pushCommand(options: PushOptions): Promise<void> {
     }
 
     if (backupsEnabled && fileExists(file.localPath)) {
+      assertSafeBackupLabel(file.label);
       if (!gitignoreEnsured) {
         ensureBackupsGitignored(repoRoot);
         gitignoreEnsured = true;

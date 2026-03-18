@@ -248,6 +248,28 @@ describe("pushCommand", () => {
     expect(existsSync(join(env.repo, "backups"))).toBe(false);
   });
 
+  it("pushCommand_unsafeLabel_throwsBeforeBackup", async () => {
+    const { pushCommand } = await import("../commands/push.js");
+
+    // Inject a project with a traversal name into the machine config
+    const machineConfigPath = join(env.repo, "sync.config.json");
+    const machineConfig = JSON.parse(readFileSync(machineConfigPath, "utf-8")) as {
+      machines: Record<string, { globalConfigPath: string; projects: Record<string, string> }>;
+    };
+    machineConfig.machines[FAKE_HOST].projects["../../evil"] = "/tmp/evil";
+    writeFileSync(machineConfigPath, JSON.stringify(machineConfig, null, 2));
+
+    // Create a repo file so the push has something to process for the traversal project
+    const evilRepoDir = join(env.repo, "configs", FAKE_HOST, "projects", "../../evil");
+    mkdirSync(evilRepoDir, { recursive: true });
+    writeFileSync(join(evilRepoDir, "CLAUDE.md"), "evil");
+    // Create the matching local file so the backup branch is reached
+    mkdirSync("/tmp/evil", { recursive: true });
+    writeFileSync("/tmp/evil/CLAUDE.md", "local evil");
+
+    await expect(pushCommand({ yes: true, backup: true })).rejects.toThrow("Unsafe backup label");
+  });
+
   it("pushCommand_dryRun_doesNotCopyFiles", async () => {
     const { pushCommand } = await import("../commands/push.js");
 
