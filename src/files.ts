@@ -1,5 +1,6 @@
-import { copyFileSync, existsSync, mkdirSync, readFileSync, renameSync, statSync } from "node:fs";
-import { dirname } from "node:path";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, statSync } from "node:fs";
+import { dirname, join } from "node:path";
+import type { ConfigFile } from "./types.js";
 
 export function fileExists(path: string): boolean {
   return existsSync(path);
@@ -11,12 +12,15 @@ export function copyFileWithDir(src: string, dest: string): void {
   copyFileSync(src, dest);
 }
 
-export function backupFile(path: string): string | null {
-  if (!existsSync(path)) return null;
-  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-  const backupPath = `${path}.backup-${timestamp}`;
-  renameSync(path, backupPath);
-  return backupPath;
+export function backupFileToRepo(
+  file: ConfigFile,
+  machineName: string,
+  repoRoot: string,
+  date?: string,
+): void {
+  const dateStr = date ?? new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  const dest = join(repoRoot, "backups", dateStr, machineName, file.label);
+  copyFileWithDir(file.localPath, dest);
 }
 
 export function getFileMtime(path: string): Date | null {
