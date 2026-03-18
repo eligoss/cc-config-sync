@@ -28,7 +28,7 @@ The current backup mechanism (`backupFile()`) renames files in-place by appendin
 
 ### 1. Backup Storage Location
 
-Backups are written inside the sync repo under `backups/`, mirroring the `configs/<machine>/` structure:
+Backups are written inside the sync repo under `backups/`, mirroring the structure defined by `ConfigFile.label` (e.g. `global/CLAUDE.md`, `projects/yarnie/CLAUDE.md`):
 
 ```
 <repo>/
@@ -47,9 +47,19 @@ Backups are written inside the sync repo under `backups/`, mirroring the `config
         CLAUDE.md
 ```
 
-- The date folder uses `YYYY-MM-DD` format. Multiple pushes on the same day overwrite files within that day's folder (no sub-second bloat).
-- Files are **copied** (not moved) into the backup folder — the original local file remains in place until `push` overwrites it.
-- The `backups/` folder is added to `.gitignore` in the sync repo. If `.gitignore` does not already contain `backups/`, `push` writes it automatically.
+- The date folder uses `YYYY-MM-DD` format. Multiple pushes on the same day overwrite files within that day's folder.
+- Files are **copied** (not moved) using the existing `copyFileWithDir()` utility from `files.ts`. The original local file stays in place until `push` overwrites it.
+- The `backups/` folder is added to `.gitignore` in the sync repo root. If the `.gitignore` file does not exist, it is created. If it exists but does not contain the `backups/` entry, the entry is appended as a new line with a trailing newline. The file is never overwritten wholesale — only appended to.
+
+**Path mapping rule:** The backup destination for a file is constructed from the `ConfigFile` object already available in `push.ts`:
+
+```
+<repo>/backups/YYYY-MM-DD/<machine.name>/<file.label>
+```
+
+`file.label` (e.g. `global/CLAUDE.md`, `projects/yarnie/CLAUDE.md`) is the relative path within the machine folder — it already encodes the correct mirror structure.
+
+**Repo root:** Both `push` and `clean-backups` obtain the repo root via the existing `getSyncRepoPath()` from `config.ts`. This function is already populated by the `preAction` hook in `cli.ts` before any command runs — no additional resolution logic is needed in command files.
 
 ### 2. User Config (`~/.cc-config-sync.json`)
 
@@ -62,14 +72,12 @@ A new `backupsEnabled` boolean field is added:
 }
 ```
 
-- Defaults to `true` when the field is absent (safe default for existing users who upgrade).
-- Two new functions in `user-config.ts`:
-  - `getBackupsEnabled(): boolean`
-  - `setBackupsEnabled(enabled: boolean): void`
+- `getBackupsEnabled(): boolean` — returns `true` when the field is absent (safe default for existing users who upgrade).
+- `setBackupsEnabled(enabled: boolean): void` — persists the value alongside the existing `repo` field.
 
 ### 3. `init` Command
 
-A new question is added after the global config path prompt:
+A new question is added **after the global config path question and before the project-adding loop** (it is part of the same config update flow, so it applies whether the user is setting up a new machine or updating an existing one):
 
 ```
 Back up local files before pushing? [Y/n]:
@@ -80,7 +88,7 @@ Back up local files before pushing? [Y/n]:
 
 ### 4. `push` Command
 
-**New `--[no-]backup` flag** (Commander.js negatable option):
+**New `--[no-]backup` flag** (Commander.js negatable option) registered in `cli.ts`:
 
 | Invocation                        | Behavior                                            |
 | --------------------------------- | --------------------------------------------------- |
@@ -88,22 +96,21 @@ Back up local files before pushing? [Y/n]:
 | `cc-config-sync push --backup`    | Forces backup on for this run                       |
 | `cc-config-sync push --no-backup` | Forces backup off for this run                      |
 
+**Effective backup setting resolution:**
+
+```
+flag provided  → use flag value (true/false)
+flag absent    → use getBackupsEnabled() (defaults to true if field missing)
+```
+
 **Backup logic** (before overwriting each local file):
 
-1. Determine effective backup setting: flag overrides config; config defaults to `true`.
+1. Determine effective backup setting.
 2. If backup is disabled → skip.
-3. If backup is enabled and local file exists → copy file to `<repo>/backups/YYYY-MM-DD/<machine>/<mirrored-path>`.
-4. Ensure `backups/` is in the repo's `.gitignore`.
+3. If local file exists → copy it to `<repo>/backups/YYYY-MM-DD/<machine>/<file.label>` using `copyFileWithDir()`.
+4. On first backup of the session, ensure `backups/` is in `<repo>/.gitignore` (append if absent, create if missing).
 
-**Console output changes:**
-
-Before:
-
-```
-  backup → /Users/anton/.claude/CLAUDE.md.backup-2026-03-17T14-32-05-123Z
-```
-
-After:
+**Console output:**
 
 ```
   backup → backups/2026-03-17/my-macbook/global/CLAUDE.md
@@ -111,7 +118,19 @@ After:
 
 ### 5. `clean-backups` Command
 
-Simplified — no flags. Scans `<repo>/backups/` for dated folders, lists what it found, prompts for confirmation, then deletes all:
+Completely rewritten. No longer calls `requireMachineConfig()` — machine config is not needed to scan the backup folder.
+
+Uses `getSyncRepoPath()` to locate `<repo>/backups/`. If `backups/` does not exist or is empty, print a friendly message and exit:
+
+```
+No backup folders found in /path/to/repo/backups/.
+```
+
+**Flow:**
+
+1. List top-level dated subdirectories of `<repo>/backups/` with recursive file counts.
+2. Prompt for confirmation.
+3. Delete all dated subdirectories recursively (using `rmSync` with `{ recursive: true }`).
 
 ```
 Backup folders in /path/to/repo/backups/:
@@ -121,29 +140,38 @@ Backup folders in /path/to/repo/backups/:
 Delete all backups? [y/N]:
 ```
 
-If `backups/` does not exist or is empty, prints a friendly message and exits.
-
 ### 6. `config show` Command
 
-Displays the backup setting alongside the repo path:
+Displays the backup setting alongside the repo path. When `backupsEnabled` is absent from the JSON (existing users who haven't re-run `init`), indicate the implicit default:
 
 ```
-Repo:    /path/to/sync-repo
-Backups: enabled
+repo:    /path/to/sync-repo
+backups: enabled (default)
+config:  /Users/anton/.cc-config-sync.json
+```
+
+When explicitly set:
+
+```
+repo:    /path/to/sync-repo
+backups: enabled
+config:  /Users/anton/.cc-config-sync.json
 ```
 
 ---
 
 ## Files Changed
 
-| File                            | Change                                                                                |
-| ------------------------------- | ------------------------------------------------------------------------------------- |
-| `src/files.ts`                  | Update `backupFile()` to copy into dated repo folder; accept repo path + machine name |
-| `src/user-config.ts`            | Add `getBackupsEnabled()` and `setBackupsEnabled()`                                   |
-| `src/commands/push.ts`          | Add `--[no-]backup` flag; integrate new backup logic                                  |
-| `src/commands/init.ts`          | Add backup preference question                                                        |
-| `src/commands/clean-backups.ts` | Rewrite to clean `<repo>/backups/` folder                                             |
-| `src/commands/config.ts`        | Show `backupsEnabled` in `config show` output                                         |
+| File                            | Change                                                                                                                                              |
+| ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/files.ts`                  | Remove `backupFile()`. Add `backupFileToRepo(file: ConfigFile, machineName: string, repoRoot: string): void` using `copyFileWithDir()`              |
+| `src/user-config.ts`            | Add `getBackupsEnabled(): boolean` and `setBackupsEnabled(enabled: boolean): void`                                                                  |
+| `src/cli.ts`                    | Add `--[no-]backup` option to the `push` command definition                                                                                         |
+| `src/commands/push.ts`          | Add `backup?: boolean` to `PushOptions`; call `backupFileToRepo()`; ensure `.gitignore` entry on first backup                                       |
+| `src/commands/init.ts`          | Add backup preference question after global config path, before project loop; call `setBackupsEnabled()`                                            |
+| `src/commands/clean-backups.ts` | Rewrite: remove `requireMachineConfig()`; use `getSyncRepoPath()`; scan `<repo>/backups/`; list dated folders with recursive file count; delete all |
+| `src/commands/config.ts`        | Show `backupsEnabled` in `config show` output with "(default)" notation when field is absent                                                        |
+| `src/__tests__/files.test.ts`   | Update tests: remove `backupFile()` tests; add `backupFileToRepo()` tests                                                                           |
 
 ---
 
