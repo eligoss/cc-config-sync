@@ -203,6 +203,25 @@ describe("pushCommand", () => {
     expect(readFileSync(localFile, "utf-8")).toBe("# new repo content\n");
   });
 
+  it("pushCommand_noBackupFlag_skipsBackup", async () => {
+    const { pushCommand } = await import("../commands/push.js");
+
+    const localFile = join(env.local, "CLAUDE.md");
+    writeFileSync(localFile, "local content");
+
+    const src = repoPath(env.repo, "global", "CLAUDE.md");
+    mkdirSync(join(env.repo, "configs", FAKE_HOST, "global"), { recursive: true });
+    writeFileSync(src, "repo content");
+
+    await pushCommand({ yes: true, backup: false });
+
+    // The local file should now contain the repo content (push happened)
+    expect(readFileSync(localFile, "utf-8")).toBe("repo content");
+
+    // No backup folder should exist
+    expect(existsSync(join(env.repo, "backups"))).toBe(false);
+  });
+
   it("pushCommand_dryRun_doesNotCopyFiles", async () => {
     const { pushCommand } = await import("../commands/push.js");
 

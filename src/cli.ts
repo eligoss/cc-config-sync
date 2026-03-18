@@ -94,7 +94,7 @@ program
 
 program
   .command("clean-backups")
-  .description("Find and delete backup files created by push")
+  .description("Delete dated backup folders from the repo backups/ directory")
   .action(cleanBackupsCommand);
 
 const configCmd = program.command("config").description("Manage cc-config-sync settings");
