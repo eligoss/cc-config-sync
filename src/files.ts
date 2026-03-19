@@ -1,4 +1,4 @@
-import { copyFileSync, existsSync, mkdirSync, readFileSync, statSync } from "node:fs";
+import { chmodSync, copyFileSync, existsSync, mkdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, isAbsolute, relative, resolve } from "node:path";
 import type { ConfigFile } from "./types.js";
 
@@ -31,6 +31,10 @@ export function backupFileToRepo(
 export function getFileMtime(path: string): Date | null {
   if (!existsSync(path)) return null;
   return statSync(path).mtime;
+}
+
+export function ensureExecutable(path: string): void {
+  chmodSync(path, 0o755);
 }
 
 export function filesAreIdentical(pathA: string, pathB: string): boolean {

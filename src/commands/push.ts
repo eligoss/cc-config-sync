@@ -2,7 +2,13 @@ import { existsSync, readFileSync, appendFileSync, writeFileSync } from "node:fs
 import { join, normalize, isAbsolute } from "node:path";
 import { requireMachineConfig } from "../machine.js";
 import { getConfigFiles } from "../paths.js";
-import { fileExists, copyFileWithDir, filesAreIdentical, backupFileToRepo } from "../files.js";
+import {
+  fileExists,
+  copyFileWithDir,
+  filesAreIdentical,
+  backupFileToRepo,
+  ensureExecutable,
+} from "../files.js";
 import { getUnifiedDiff } from "../diff.js";
 import { filterConfigFiles } from "../filter.js";
 import { ask } from "../prompt.js";
@@ -106,6 +112,9 @@ export async function pushCommand(options: PushOptions): Promise<void> {
     }
 
     copyFileWithDir(file.repoPath, file.localPath);
+    if (file.localPath.endsWith(".sh")) {
+      ensureExecutable(file.localPath);
+    }
     console.log(`  push  ${file.label}`);
     pushed++;
   }
