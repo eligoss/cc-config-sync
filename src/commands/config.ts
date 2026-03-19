@@ -1,6 +1,11 @@
 import { resolve, isAbsolute } from "node:path";
 import { existsSync } from "node:fs";
-import { setUserConfigRepo, getUserConfigRepo, USER_CONFIG_PATH } from "../user-config.js";
+import {
+  setUserConfigRepo,
+  getUserConfigRepo,
+  getBackupsEnabledRaw,
+  USER_CONFIG_PATH,
+} from "../user-config.js";
 
 export function configSetRepoCommand(repoPath: string): void {
   const resolved = resolve(repoPath);
@@ -25,6 +30,9 @@ export function configShowCommand(): void {
     console.error(`Run: cc-config-sync config set-repo <path>`);
     return;
   }
-  console.log(`repo: ${repo}`);
-  console.log(`config file: ${USER_CONFIG_PATH}`);
+  const raw = getBackupsEnabledRaw();
+  const backupsLabel = raw === undefined ? "enabled (default)" : raw ? "enabled" : "disabled";
+  console.log(`repo:    ${repo}`);
+  console.log(`backups: ${backupsLabel}`);
+  console.log(`config:  ${USER_CONFIG_PATH}`);
 }

@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 import { hostname, homedir } from "node:os";
 import { getMachineName } from "../machine.js";
 import { loadConfig, saveConfig } from "../config.js";
+import { setBackupsEnabled, getBackupsEnabled } from "../user-config.js";
 
 // init uses its own ask() because it supports optional defaultValue display,
 // which differs from the shared ask() in prompt.ts
@@ -56,6 +57,13 @@ export async function initCommand(): Promise<void> {
     console.log(`Warning: ${globalConfigPath} does not exist.`);
   }
 
+  const existingBackupsEnabled = getBackupsEnabled();
+  const backupAnswer = await ask(
+    "Back up local files before pushing?",
+    existingBackupsEnabled ? "Y" : "n",
+  );
+  const backupsEnabled = backupAnswer.toLowerCase() !== "n" && backupAnswer.toLowerCase() !== "no";
+
   const projects: Record<string, string> = { ...(existingConfig?.projects || {}) };
 
   console.log("\nAdd projects to sync (leave name empty to finish):");
@@ -85,8 +93,10 @@ export async function initCommand(): Promise<void> {
 
   config.machines[machineName] = { globalConfigPath, projects };
   saveConfig(config);
+  setBackupsEnabled(backupsEnabled);
 
   console.log(`\nSaved configuration for "${machineName}" to sync.config.json`);
   console.log(`  Global: ${globalConfigPath}`);
   console.log(`  Projects: ${Object.keys(projects).length}`);
+  console.log(`  Backups: ${backupsEnabled ? "enabled" : "disabled"}`);
 }

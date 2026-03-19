@@ -190,18 +190,86 @@ describe("pushCommand", () => {
     mkdirSync(join(env.repo, "configs", FAKE_HOST, "global"), { recursive: true });
     writeFileSync(src, "# new repo content\n");
 
-    await pushCommand({ yes: true });
+    await pushCommand({ yes: true, backup: true });
 
-    // A backup file should exist in the same directory
-    const { readdirSync } = await import("node:fs");
-    const entries = readdirSync(env.local);
-    const backup = entries.find((e) => e.includes(".backup-"));
-    expect(backup).toBeDefined();
+    // A backup file should exist in the repo under backups/<date>/<machine>/global/CLAUDE.md
+    const dateStr = new Date().toISOString().slice(0, 10);
+    const backupFile = join(env.repo, "backups", dateStr, FAKE_HOST, "global", "CLAUDE.md");
+    expect(existsSync(backupFile)).toBe(true);
+    expect(readFileSync(backupFile, "utf-8")).toBe("# old local content\n");
 
     // The local file should now contain the repo content (written after backup)
     expect(existsSync(localFile)).toBe(true);
-    const newContent = readFileSync(localFile, "utf-8");
-    expect(newContent).toBe("# new repo content\n");
+    expect(readFileSync(localFile, "utf-8")).toBe("# new repo content\n");
+
+    // .gitignore created with backups/ entry
+    const gitignorePath = join(env.repo, ".gitignore");
+    expect(existsSync(gitignorePath)).toBe(true);
+    expect(readFileSync(gitignorePath, "utf-8")).toContain("backups/");
+  });
+
+  it("pushCommand_gitignoreAlreadyHasBackupsEntry_doesNotDuplicate", async () => {
+    const { pushCommand } = await import("../commands/push.js");
+
+    // Pre-create .gitignore with backups/ already present
+    writeFileSync(join(env.repo, ".gitignore"), "backups/\n");
+
+    const localFile = join(env.local, "CLAUDE.md");
+    writeFileSync(localFile, "# old local content\n");
+
+    const src = repoPath(env.repo, "global", "CLAUDE.md");
+    mkdirSync(join(env.repo, "configs", FAKE_HOST, "global"), { recursive: true });
+    writeFileSync(src, "# new repo content\n");
+
+    await pushCommand({ yes: true, backup: true });
+
+    // .gitignore should still contain backups/ but only once
+    const gitignoreContent = readFileSync(join(env.repo, ".gitignore"), "utf-8");
+    const matches = gitignoreContent.split("\n").filter((line) => line.trim() === "backups/");
+    expect(matches).toHaveLength(1);
+  });
+
+  it("pushCommand_noBackupFlag_skipsBackup", async () => {
+    const { pushCommand } = await import("../commands/push.js");
+
+    const localFile = join(env.local, "CLAUDE.md");
+    writeFileSync(localFile, "local content");
+
+    const src = repoPath(env.repo, "global", "CLAUDE.md");
+    mkdirSync(join(env.repo, "configs", FAKE_HOST, "global"), { recursive: true });
+    writeFileSync(src, "repo content");
+
+    await pushCommand({ yes: true, backup: false });
+
+    // The local file should now contain the repo content (push happened)
+    expect(readFileSync(localFile, "utf-8")).toBe("repo content");
+
+    // No backup folder should exist
+    expect(existsSync(join(env.repo, "backups"))).toBe(false);
+  });
+
+  it("pushCommand_unsafeLabel_throwsBeforeBackup", async () => {
+    const { pushCommand } = await import("../commands/push.js");
+
+    // Inject a project with a traversal name into the machine config
+    const machineConfigPath = join(env.repo, "sync.config.json");
+    const machineConfig = JSON.parse(readFileSync(machineConfigPath, "utf-8")) as {
+      machines: Record<string, { globalConfigPath: string; projects: Record<string, string> }>;
+    };
+    // Point the evil project at a sandboxed local dir
+    const evilLocal = join(env.local, "evil-project");
+    machineConfig.machines[FAKE_HOST].projects["../../evil"] = evilLocal;
+    writeFileSync(machineConfigPath, JSON.stringify(machineConfig, null, 2));
+
+    // Create a repo file so the push has something to process for the traversal project
+    const evilRepoDir = join(env.repo, "configs", FAKE_HOST, "projects", "../../evil");
+    mkdirSync(evilRepoDir, { recursive: true });
+    writeFileSync(join(evilRepoDir, "CLAUDE.md"), "evil");
+    // Create the matching local file so the backup branch is reached
+    mkdirSync(evilLocal, { recursive: true });
+    writeFileSync(join(evilLocal, "CLAUDE.md"), "local evil");
+
+    await expect(pushCommand({ yes: true, backup: true })).rejects.toThrow("Unsafe backup label");
   });
 
   it("pushCommand_dryRun_doesNotCopyFiles", async () => {

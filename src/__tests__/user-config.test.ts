@@ -84,4 +84,57 @@ describe("user-config", () => {
     const content = JSON.parse(readFileSync(configPath, "utf-8")) as { repo: string };
     expect(content.repo).toBe("/new/repo");
   });
+
+  it("getBackupsEnabled_fieldAbsent_returnsTrue", async () => {
+    writeFileSync(
+      join(fakeHome, ".cc-config-sync.json"),
+      JSON.stringify({ repo: "/some/repo" }) + "\n",
+    );
+    const { getBackupsEnabled } = await import("../user-config.js");
+    expect(getBackupsEnabled()).toBe(true);
+  });
+
+  it("getBackupsEnabled_noFile_returnsTrue", async () => {
+    const { getBackupsEnabled } = await import("../user-config.js");
+    expect(getBackupsEnabled()).toBe(true);
+  });
+
+  it("getBackupsEnabled_explicitFalse_returnsFalse", async () => {
+    writeFileSync(
+      join(fakeHome, ".cc-config-sync.json"),
+      JSON.stringify({ repo: "/some/repo", backupsEnabled: false }) + "\n",
+    );
+    const { getBackupsEnabled } = await import("../user-config.js");
+    expect(getBackupsEnabled()).toBe(false);
+  });
+
+  it("setBackupsEnabled_persistsAlongsideExistingFields", async () => {
+    writeFileSync(
+      join(fakeHome, ".cc-config-sync.json"),
+      JSON.stringify({ repo: "/my/repo" }) + "\n",
+    );
+    const { setBackupsEnabled, getBackupsEnabled, getUserConfigRepo } =
+      await import("../user-config.js");
+    setBackupsEnabled(false);
+    expect(getBackupsEnabled()).toBe(false);
+    expect(getUserConfigRepo()).toBe("/my/repo"); // existing field preserved
+  });
+
+  it("getBackupsEnabledRaw_fieldAbsent_returnsUndefined", async () => {
+    writeFileSync(
+      join(fakeHome, ".cc-config-sync.json"),
+      JSON.stringify({ repo: "/some/repo" }) + "\n",
+    );
+    const { getBackupsEnabledRaw } = await import("../user-config.js");
+    expect(getBackupsEnabledRaw()).toBeUndefined();
+  });
+
+  it("getBackupsEnabledRaw_explicitTrue_returnsTrue", async () => {
+    writeFileSync(
+      join(fakeHome, ".cc-config-sync.json"),
+      JSON.stringify({ backupsEnabled: true }) + "\n",
+    );
+    const { getBackupsEnabledRaw } = await import("../user-config.js");
+    expect(getBackupsEnabledRaw()).toBe(true);
+  });
 });

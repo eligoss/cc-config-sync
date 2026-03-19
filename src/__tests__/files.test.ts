@@ -6,10 +6,11 @@ import {
   fileExists,
   filesAreIdentical,
   copyFileWithDir,
-  backupFile,
+  backupFileToRepo,
   getFileMtime,
   ensureExecutable,
 } from "../files.js";
+import type { ConfigFile } from "../types.js";
 
 describe("files", () => {
   let tmp: string;
@@ -103,21 +104,90 @@ describe("files", () => {
     });
   });
 
-  describe("backupFile", () => {
-    it("returns null for non-existent file", () => {
-      expect(backupFile(join(tmp, "nope.txt"))).toBeNull();
+  describe("backupFileToRepo", () => {
+    it("copies file to dated repo folder mirroring label", () => {
+      const localFile = join(tmp, "CLAUDE.md");
+      writeFileSync(localFile, "original content");
+
+      const repoRoot = join(tmp, "repo");
+      const file: ConfigFile = {
+        label: "global/CLAUDE.md",
+        localPath: localFile,
+        repoPath: join(repoRoot, "configs", "my-machine", "global", "CLAUDE.md"),
+      };
+
+      backupFileToRepo(file, "my-machine", repoRoot, "2026-03-17");
+
+      const expectedBackup = join(
+        repoRoot,
+        "backups",
+        "2026-03-17",
+        "my-machine",
+        "global",
+        "CLAUDE.md",
+      );
+      expect(existsSync(expectedBackup)).toBe(true);
+      expect(readFileSync(expectedBackup, "utf-8")).toBe("original content");
     });
 
-    it("renames file with backup suffix", () => {
-      const file = join(tmp, "config.json");
-      writeFileSync(file, "original");
-      const backupPath = backupFile(file);
+    it("leaves original local file in place", () => {
+      const localFile = join(tmp, "settings.json");
+      writeFileSync(localFile, "{}");
 
-      expect(backupPath).not.toBeNull();
-      expect(backupPath).toMatch(/config\.json\.backup-/);
-      expect(existsSync(backupPath!)).toBe(true);
-      expect(existsSync(file)).toBe(false);
-      expect(readFileSync(backupPath!, "utf-8")).toBe("original");
+      const repoRoot = join(tmp, "repo");
+      const file: ConfigFile = {
+        label: "global/settings.json",
+        localPath: localFile,
+        repoPath: join(repoRoot, "configs", "my-machine", "global", "settings.json"),
+      };
+
+      backupFileToRepo(file, "my-machine", repoRoot, "2026-03-17");
+
+      expect(existsSync(localFile)).toBe(true);
+      expect(readFileSync(localFile, "utf-8")).toBe("{}");
+    });
+
+    it("creates intermediate directories for nested project labels", () => {
+      const localFile = join(tmp, "nested.md");
+      writeFileSync(localFile, "data");
+
+      const repoRoot = join(tmp, "repo");
+      const file: ConfigFile = {
+        label: "projects/my-project/CLAUDE.md",
+        localPath: localFile,
+        repoPath: join(repoRoot, "configs", "my-machine", "projects", "my-project", "CLAUDE.md"),
+      };
+
+      backupFileToRepo(file, "my-machine", repoRoot, "2026-03-17");
+
+      const expectedBackup = join(
+        repoRoot,
+        "backups",
+        "2026-03-17",
+        "my-machine",
+        "projects",
+        "my-project",
+        "CLAUDE.md",
+      );
+      expect(existsSync(expectedBackup)).toBe(true);
+    });
+
+    it("uses today's date when date param is omitted", () => {
+      const localFile = join(tmp, "CLAUDE.md");
+      writeFileSync(localFile, "hello");
+
+      const repoRoot = join(tmp, "repo");
+      const file: ConfigFile = {
+        label: "global/CLAUDE.md",
+        localPath: localFile,
+        repoPath: join(repoRoot, "configs", "my-machine", "global", "CLAUDE.md"),
+      };
+
+      const today = new Date().toISOString().slice(0, 10);
+      backupFileToRepo(file, "my-machine", repoRoot);
+
+      const expectedBackup = join(repoRoot, "backups", today, "my-machine", "global", "CLAUDE.md");
+      expect(existsSync(expectedBackup)).toBe(true);
     });
   });
 });

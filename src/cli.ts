@@ -53,6 +53,8 @@ program
   .option("--global-only", "Only push global configs")
   .option("-y, --yes", "Apply all changes without prompting")
   .option("--dry-run", "Show what would be applied without copying files or creating backups")
+  .option("--backup", "Force backups on for this run")
+  .option("--no-backup", "Force backups off for this run")
   .action(pushCommand);
 
 program
@@ -90,7 +92,7 @@ program
 
 program
   .command("clean-backups")
-  .description("Find and delete backup files created by push")
+  .description("Delete dated backup folders from the repo backups/ directory")
   .action(cleanBackupsCommand);
 
 const configCmd = program.command("config").description("Manage cc-config-sync settings");
