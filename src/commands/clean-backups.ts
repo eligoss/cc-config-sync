@@ -23,13 +23,14 @@ export async function cleanBackupsCommand(): Promise<void> {
     return;
   }
 
+  const dateFolderPattern = /^\d{4}-\d{2}-\d{2}$/;
   const entries = readdirSync(backupsDir, { withFileTypes: true })
-    .filter((e) => e.isDirectory())
+    .filter((e) => e.isDirectory() && dateFolderPattern.test(e.name))
     .map((e) => e.name)
     .sort();
 
   if (entries.length === 0) {
-    console.log(`No backup folders found in ${backupsDir}.`);
+    console.log(`No dated backup folders found in ${backupsDir}.`);
     return;
   }
 

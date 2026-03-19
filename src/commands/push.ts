@@ -53,6 +53,7 @@ export async function pushCommand(options: PushOptions): Promise<void> {
   let skipped = 0;
   let applyAll = options.yes ?? false;
   let gitignoreEnsured = false;
+  const backupDate = new Date().toISOString().slice(0, 10);
 
   console.log(`${options.dryRun ? "[DRY RUN] " : ""}Pushing configs to machine: ${machine.name}\n`);
 
@@ -100,9 +101,8 @@ export async function pushCommand(options: PushOptions): Promise<void> {
         ensureBackupsGitignored(repoRoot);
         gitignoreEnsured = true;
       }
-      const dateStr = new Date().toISOString().slice(0, 10);
-      backupFileToRepo(file, machine.name, repoRoot, dateStr);
-      console.log(`  backup → backups/${dateStr}/${machine.name}/${file.label}`);
+      backupFileToRepo(file, machine.name, repoRoot, backupDate);
+      console.log(`  backup → backups/${backupDate}/${machine.name}/${file.label}`);
     }
 
     copyFileWithDir(file.repoPath, file.localPath);

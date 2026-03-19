@@ -1,5 +1,5 @@
 import { copyFileSync, existsSync, mkdirSync, readFileSync, statSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { dirname, isAbsolute, relative, resolve } from "node:path";
 import type { ConfigFile } from "./types.js";
 
 export function fileExists(path: string): boolean {
@@ -19,7 +19,12 @@ export function backupFileToRepo(
   date?: string,
 ): void {
   const dateStr = date ?? new Date().toISOString().slice(0, 10); // YYYY-MM-DD
-  const dest = join(repoRoot, "backups", dateStr, machineName, file.label);
+  const backupsRoot = resolve(repoRoot, "backups");
+  const dest = resolve(backupsRoot, dateStr, machineName, file.label);
+  const rel = relative(backupsRoot, dest);
+  if (rel.startsWith("..") || isAbsolute(rel)) {
+    throw new Error(`Invalid backup destination: ${file.label}`);
+  }
   copyFileWithDir(file.localPath, dest);
 }
 

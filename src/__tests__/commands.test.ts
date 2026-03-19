@@ -256,7 +256,9 @@ describe("pushCommand", () => {
     const machineConfig = JSON.parse(readFileSync(machineConfigPath, "utf-8")) as {
       machines: Record<string, { globalConfigPath: string; projects: Record<string, string> }>;
     };
-    machineConfig.machines[FAKE_HOST].projects["../../evil"] = "/tmp/evil";
+    // Point the evil project at a sandboxed local dir
+    const evilLocal = join(env.local, "evil-project");
+    machineConfig.machines[FAKE_HOST].projects["../../evil"] = evilLocal;
     writeFileSync(machineConfigPath, JSON.stringify(machineConfig, null, 2));
 
     // Create a repo file so the push has something to process for the traversal project
@@ -264,8 +266,8 @@ describe("pushCommand", () => {
     mkdirSync(evilRepoDir, { recursive: true });
     writeFileSync(join(evilRepoDir, "CLAUDE.md"), "evil");
     // Create the matching local file so the backup branch is reached
-    mkdirSync("/tmp/evil", { recursive: true });
-    writeFileSync("/tmp/evil/CLAUDE.md", "local evil");
+    mkdirSync(evilLocal, { recursive: true });
+    writeFileSync(join(evilLocal, "CLAUDE.md"), "local evil");
 
     await expect(pushCommand({ yes: true, backup: true })).rejects.toThrow("Unsafe backup label");
   });

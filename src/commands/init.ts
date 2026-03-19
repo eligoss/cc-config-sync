@@ -57,7 +57,7 @@ export async function initCommand(): Promise<void> {
     console.log(`Warning: ${globalConfigPath} does not exist.`);
   }
 
-  const existingBackupsEnabled = existingConfig !== undefined ? getBackupsEnabled() : true;
+  const existingBackupsEnabled = getBackupsEnabled();
   const backupAnswer = await ask(
     "Back up local files before pushing?",
     existingBackupsEnabled ? "Y" : "n",
