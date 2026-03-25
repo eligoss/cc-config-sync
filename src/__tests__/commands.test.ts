@@ -672,6 +672,56 @@ describe("isConfigSubcommand", () => {
   });
 });
 
+// ── cleanBackups — non-interactive ────────────────────────────────────────
+
+describe("cleanBackupsCommand — non-interactive", () => {
+  let env: TestEnv;
+
+  beforeEach(async () => {
+    env = setupEnv();
+    vi.resetModules();
+    const config = await import("../config.js");
+    config.setSyncRepoPath(env.repo);
+    writeConfig(env.repo, env.local);
+  });
+
+  afterEach(() => {
+    rmSync(env.repo, { recursive: true, force: true });
+    rmSync(env.local, { recursive: true, force: true });
+    rmSync(env.projectDir, { recursive: true, force: true });
+  });
+
+  it("cleanBackupsCommand_nonInteractive_deletesWithoutPrompting", async () => {
+    // Create a backup folder
+    const backupDir = join(env.repo, "backups", "2026-01-01");
+    mkdirSync(backupDir, { recursive: true });
+    writeFileSync(join(backupDir, "file.txt"), "backup content");
+
+    const { cleanBackupsCommand } = await import("../commands/clean-backups.js");
+
+    await cleanBackupsCommand({ nonInteractive: true });
+
+    expect(existsSync(backupDir)).toBe(false);
+  });
+
+  it("cleanBackupsCommand_noOptions_stillPromptsInInteractiveMode", async () => {
+    // Create a backup folder
+    const backupDir = join(env.repo, "backups", "2026-01-01");
+    mkdirSync(backupDir, { recursive: true });
+    writeFileSync(join(backupDir, "file.txt"), "backup content");
+
+    // Mock prompt to answer "n"
+    vi.doMock("../prompt.js", () => ({ ask: async () => "n" }));
+
+    const { cleanBackupsCommand } = await import("../commands/clean-backups.js");
+
+    await cleanBackupsCommand({});
+
+    // Backup should still exist because we answered "n"
+    expect(existsSync(backupDir)).toBe(true);
+  });
+});
+
 // ── CLI subprocess integration (preAction guard end-to-end) ───────────────
 
 /** Build a clean env: inherit process.env, set HOME to an isolated tmpdir,
