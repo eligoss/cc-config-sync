@@ -32,12 +32,27 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `cc-config-sync config set-repo <path>`     | Save default sync repo path to `~/.cc-config-sync.json`              |
 | `cc-config-sync config show`                | Show current config (saved repo path and config file location)       |
 
+**Global flags:**
+
+- `--non-interactive` — suppress all prompts (auto-detected when `CI=true`)
+
 **Common flags** (on `push`, `pull`, `status`):
 
 - `--yes` / `-y` — skip confirmation prompts
 - `--dry-run` — preview changes without writing any files
 - `--global-only` — only process global (`~/.claude/`) files
 - `--project <name>` — only process one tracked project
+
+**`init` flags (non-interactive):**
+
+- `--machine-name <name>` — required in non-interactive mode
+- `--global-path <path>` — defaults to `~/.claude`
+- `--backup` / `--no-backup` — defaults to `--backup`
+- `--project <name:path>` — repeatable, add project(s) during init
+
+**`remove-project` flags:**
+
+- `--delete-repo-dir` — also delete the project directory from the sync repo
 
 ## Development Scripts
 

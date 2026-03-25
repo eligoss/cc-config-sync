@@ -167,6 +167,38 @@ Display the currently saved repo path and config file location.
 cc-config-sync config show
 ```
 
+## Non-Interactive Mode
+
+For use in CI/CD pipelines, scripts, and AI agents. Suppresses all interactive prompts.
+
+```bash
+# Via flag
+cc-config-sync --non-interactive push
+cc-config-sync --non-interactive init --machine-name my-machine --global-path ~/.claude
+
+# Via CI environment variable (auto-detected)
+CI=true cc-config-sync push
+```
+
+### Behavior by command
+
+| Command          | Interactive (default)     | Non-interactive                                                   |
+| ---------------- | ------------------------- | ----------------------------------------------------------------- |
+| `push`           | Confirms each file change | Applies all changes                                               |
+| `init`           | Prompts for all values    | Requires `--machine-name`; others use defaults or existing values |
+| `remove-project` | Asks to delete repo dir   | Keeps repo dir (use `--delete-repo-dir` to delete)                |
+| `clean-backups`  | Confirms before deleting  | Deletes without confirmation                                      |
+| Others           | No prompts                | No change                                                         |
+
+### Init flags (non-interactive)
+
+| Flag                       | Required | Default        |
+| -------------------------- | -------- | -------------- |
+| `--machine-name <name>`    | Yes      | —              |
+| `--global-path <path>`     | No       | `~/.claude`    |
+| `--backup` / `--no-backup` | No       | `--backup`     |
+| `--project <name:path>`    | No       | — (repeatable) |
+
 ## Configuration
 
 ### sync.config.json
