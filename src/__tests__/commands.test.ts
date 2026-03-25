@@ -284,6 +284,33 @@ describe("pushCommand", () => {
     // Local file should NOT be created in dry-run mode
     expect(existsSync(join(env.local, "CLAUDE.md"))).toBe(false);
   });
+
+  it("pushCommand_nonInteractive_copiesWithoutPrompting", async () => {
+    const { pushCommand } = await import("../commands/push.js");
+
+    const src = repoPath(env.repo, "global", "CLAUDE.md");
+    mkdirSync(join(env.repo, "configs", FAKE_HOST, "global"), { recursive: true });
+    writeFileSync(src, "# from repo\n");
+
+    // nonInteractive should apply all changes without prompting, like --yes
+    await pushCommand({ nonInteractive: true });
+
+    const dest = join(env.local, "CLAUDE.md");
+    expect(existsSync(dest)).toBe(true);
+    expect(readFileSync(dest, "utf-8")).toBe("# from repo\n");
+  });
+
+  it("pushCommand_nonInteractive_dryRun_doesNotCopyFiles", async () => {
+    const { pushCommand } = await import("../commands/push.js");
+
+    const src = repoPath(env.repo, "global", "CLAUDE.md");
+    mkdirSync(join(env.repo, "configs", FAKE_HOST, "global"), { recursive: true });
+    writeFileSync(src, "# repo content\n");
+
+    await pushCommand({ nonInteractive: true, dryRun: true });
+
+    expect(existsSync(join(env.local, "CLAUDE.md"))).toBe(false);
+  });
 });
 
 // ── status ────────────────────────────────────────────────────────────────
