@@ -56,7 +56,7 @@ program
   .option("--dry-run", "Show what would be applied without copying files or creating backups")
   .option("--backup", "Force backups on for this run")
   .option("--no-backup", "Force backups off for this run")
-  .action(pushCommand);
+  .action((_options, command) => pushCommand(command.optsWithGlobals()));
 
 program
   .command("status")
@@ -82,7 +82,7 @@ program
     (val: string, acc: string[]) => [...acc, val],
     [] as string[],
   )
-  .action(initCommand);
+  .action((_options, command) => initCommand(command.optsWithGlobals()));
 
 program
   .command("add-project")
@@ -96,7 +96,7 @@ program
   .description("Remove a project from tracking")
   .argument("<name>", "Project name")
   .option("--delete-repo-dir", "Also delete the project directory in the sync repo")
-  .action(removeProjectCommand);
+  .action((name, _options, command) => removeProjectCommand(name, command.optsWithGlobals()));
 
 program
   .command("rename-project")
@@ -108,7 +108,7 @@ program
 program
   .command("clean-backups")
   .description("Delete dated backup folders from the repo backups/ directory")
-  .action(cleanBackupsCommand);
+  .action((_options, command) => cleanBackupsCommand(command.optsWithGlobals()));
 
 const configCmd = program.command("config").description("Manage cc-config-sync settings");
 
