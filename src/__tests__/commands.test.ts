@@ -765,6 +765,141 @@ describe("cleanBackupsCommand — non-interactive", () => {
   });
 });
 
+// ── initCommand — non-interactive ─────────────────────────────────────────
+
+describe("initCommand — non-interactive", () => {
+  let env: TestEnv;
+
+  beforeEach(async () => {
+    env = setupEnv();
+    vi.resetModules();
+    // Redirect homedir() to env.repo so USER_CONFIG_PATH in user-config.ts
+    // resolves to a writable location (not a deleted temp dir from a prior test).
+    vi.doMock("node:os", async (importOriginal) => {
+      const actual = await importOriginal<typeof import("node:os")>();
+      return { ...actual, homedir: () => env.repo, hostname: () => FAKE_HOST };
+    });
+    const config = await import("../config.js");
+    config.setSyncRepoPath(env.repo);
+    // Start with empty config (no machines)
+    writeFileSync(
+      join(env.repo, "sync.config.json"),
+      JSON.stringify({ machines: {} }, null, 2) + "\n",
+    );
+  });
+
+  afterEach(() => {
+    rmSync(env.repo, { recursive: true, force: true });
+    rmSync(env.local, { recursive: true, force: true });
+    rmSync(env.projectDir, { recursive: true, force: true });
+  });
+
+  it("initCommand_nonInteractive_missingMachineName_exits1", async () => {
+    const { initCommand } = await import("../commands/init.js");
+    const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => undefined as never);
+
+    await initCommand({ nonInteractive: true });
+
+    expect(exitSpy).toHaveBeenCalledWith(1);
+    exitSpy.mockRestore();
+  });
+
+  it("initCommand_nonInteractive_withMachineName_createsConfig", async () => {
+    const { initCommand } = await import("../commands/init.js");
+
+    await initCommand({
+      nonInteractive: true,
+      machineName: "my-machine",
+      globalPath: env.local,
+    });
+
+    const { loadConfig } = await import("../config.js");
+    const config = loadConfig();
+    expect(config.machines["my-machine"]).toBeDefined();
+    expect(config.machines["my-machine"].globalConfigPath).toBe(env.local);
+  });
+
+  it("initCommand_nonInteractive_defaultGlobalPath_usesHomeClaude", async () => {
+    const { initCommand } = await import("../commands/init.js");
+    const { homedir } = await import("node:os");
+
+    await initCommand({
+      nonInteractive: true,
+      machineName: "my-machine",
+    });
+
+    const { loadConfig } = await import("../config.js");
+    const config = loadConfig();
+    expect(config.machines["my-machine"].globalConfigPath).toBe(`${homedir()}/.claude`);
+  });
+
+  it("initCommand_nonInteractive_withProjects_parsesNameColonPath", async () => {
+    const { initCommand } = await import("../commands/init.js");
+
+    await initCommand({
+      nonInteractive: true,
+      machineName: "my-machine",
+      globalPath: env.local,
+      project: [`test-proj:${env.projectDir}`],
+    });
+
+    const { loadConfig } = await import("../config.js");
+    const config = loadConfig();
+    expect(config.machines["my-machine"].projects["test-proj"]).toBeDefined();
+  });
+
+  it("initCommand_nonInteractive_malformedProject_exits1", async () => {
+    const { initCommand } = await import("../commands/init.js");
+    const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => undefined as never);
+
+    await initCommand({
+      nonInteractive: true,
+      machineName: "my-machine",
+      project: ["no-colon-here"],
+    });
+
+    expect(exitSpy).toHaveBeenCalledWith(1);
+    exitSpy.mockRestore();
+  });
+
+  it("initCommand_nonInteractive_existingConfig_preservesExistingValues", async () => {
+    // First create an existing config
+    const { loadConfig, saveConfig } = await import("../config.js");
+    const config = loadConfig();
+    config.machines["my-machine"] = {
+      globalConfigPath: "/custom/path",
+      projects: { "existing-proj": "/some/path" },
+    };
+    saveConfig(config);
+
+    const { initCommand } = await import("../commands/init.js");
+
+    // Update without providing globalPath — should preserve /custom/path
+    await initCommand({
+      nonInteractive: true,
+      machineName: "my-machine",
+    });
+
+    const updatedConfig = loadConfig();
+    expect(updatedConfig.machines["my-machine"].globalConfigPath).toBe("/custom/path");
+    expect(updatedConfig.machines["my-machine"].projects["existing-proj"]).toBe("/some/path");
+  });
+
+  it("initCommand_nonInteractive_backupDisabled", async () => {
+    const { initCommand } = await import("../commands/init.js");
+
+    await initCommand({
+      nonInteractive: true,
+      machineName: "my-machine",
+      globalPath: env.local,
+      backup: false,
+    });
+
+    const { getBackupsEnabled } = await import("../user-config.js");
+    expect(getBackupsEnabled()).toBe(false);
+  });
+});
+
 // ── CLI subprocess integration (preAction guard end-to-end) ───────────────
 
 /** Build a clean env: inherit process.env, set HOME to an isolated tmpdir,

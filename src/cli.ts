@@ -69,7 +69,20 @@ program
 
 program.command("list").description("Show all registered paths").action(listCommand);
 
-program.command("init").description("Interactive setup for current machine").action(initCommand);
+program
+  .command("init")
+  .description("Interactive setup for current machine")
+  .option("--machine-name <name>", "Machine identifier (required in non-interactive mode)")
+  .option("--global-path <path>", "Path to global config directory (default: ~/.claude)")
+  .option("--backup", "Enable backups on push (default)")
+  .option("--no-backup", "Disable backups on push")
+  .option(
+    "--project <name:path>",
+    "Add project to track (repeatable, format: name:path)",
+    (val: string, acc: string[]) => [...acc, val],
+    [] as string[],
+  )
+  .action(initCommand);
 
 program
   .command("add-project")

@@ -5,6 +5,7 @@ import { hostname, homedir } from "node:os";
 import { getMachineName } from "../machine.js";
 import { loadConfig, saveConfig } from "../config.js";
 import { setBackupsEnabled, getBackupsEnabled } from "../user-config.js";
+import { isNonInteractive } from "../cli-utils.js";
 
 // init uses its own ask() because it supports optional defaultValue display,
 // which differs from the shared ask() in prompt.ts
@@ -19,19 +20,93 @@ function ask(question: string, defaultValue?: string): Promise<string> {
   });
 }
 
-export async function initCommand(): Promise<void> {
+export interface InitOptions {
+  nonInteractive?: boolean;
+  machineName?: string;
+  globalPath?: string;
+  backup?: boolean;
+  project?: string[];
+}
+
+/**
+ * Parse a "name:path" string, splitting on the first colon only.
+ * Returns [name, path] or null if the format is invalid.
+ */
+function parseProjectArg(value: string): [string, string] | null {
+  const colonIndex = value.indexOf(":");
+  if (colonIndex === -1) return null;
+  const name = value.slice(0, colonIndex);
+  const path = value.slice(colonIndex + 1);
+  if (!name || !path) return null;
+  return [name, resolve(path)];
+}
+
+export async function initCommand(options: InitOptions = {}): Promise<void> {
   const config = loadConfig();
-  const defaultName = getMachineName();
   const systemHostname = hostname();
+
+  if (isNonInteractive(options)) {
+    // --- Non-interactive mode ---
+    if (!options.machineName) {
+      console.error("Error: --machine-name is required in non-interactive mode");
+      process.exit(1);
+    }
+
+    const machineName = options.machineName;
+    const existingConfig = config.machines[machineName];
+
+    // Resolve values: explicit flag > existing config > default
+    const globalConfigPath =
+      options.globalPath ?? existingConfig?.globalConfigPath ?? `${homedir()}/.claude`;
+
+    if (!existsSync(globalConfigPath)) {
+      console.log(`Warning: ${globalConfigPath} does not exist.`);
+    }
+
+    // Parse projects from --project flags
+    const projects: Record<string, string> = { ...(existingConfig?.projects || {}) };
+    if (options.project) {
+      for (const projectArg of options.project) {
+        const parsed = parseProjectArg(projectArg);
+        if (!parsed) {
+          console.error(`Error: Invalid --project format "${projectArg}", expected name:path`);
+          process.exit(1);
+          return;
+        }
+        const [name, path] = parsed;
+        if (!existsSync(path)) {
+          console.log(`Warning: ${path} does not exist.`);
+        }
+        projects[name] = path;
+      }
+    }
+
+    // Resolve backup setting: explicit flag > existing setting > default (true)
+    if (options.backup !== undefined) {
+      setBackupsEnabled(options.backup);
+    } else if (!existingConfig) {
+      setBackupsEnabled(true);
+    }
+    // If existingConfig exists and no explicit flag, preserve existing backup setting
+
+    config.machines[machineName] = { globalConfigPath, projects };
+    saveConfig(config);
+
+    const backupsEnabled = getBackupsEnabled();
+    console.log(`Saved configuration for "${machineName}" to sync.config.json`);
+    console.log(`  Global: ${globalConfigPath}`);
+    console.log(`  Projects: ${Object.keys(projects).length}`);
+    console.log(`  Backups: ${backupsEnabled ? "enabled" : "disabled"}`);
+    return;
+  }
+
+  // --- Interactive mode (original behavior) ---
+  const defaultName = getMachineName();
 
   console.log("Claude Config Sync — Machine Setup\n");
 
   const machineName = await ask("Machine name", defaultName);
 
-  // Warn if the user chose a name different from the system hostname.
-  // Other commands use os.hostname() for lookup, so a mismatch means the
-  // machine config won't be found unless the user knows to set CLAUDE_SYNC_REPO
-  // and always uses this custom name consistently.
   if (machineName !== systemHostname) {
     console.log(
       `Warning: Your system hostname is '${systemHostname}'. Using a different name means` +
@@ -49,7 +124,6 @@ export async function initCommand(): Promise<void> {
     }
   }
 
-  // Use os.homedir() instead of process.env.HOME for cross-platform reliability
   const defaultGlobal = existingConfig?.globalConfigPath || `${homedir()}/.claude`;
   const globalConfigPath = await ask("Global config path (~/.claude)", defaultGlobal);
 
