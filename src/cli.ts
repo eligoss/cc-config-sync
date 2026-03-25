@@ -21,6 +21,7 @@ program
   .description("Sync Claude Code configurations across machines")
   .version(version)
   .option("--repo <path>", "Path to the sync repo (or set CLAUDE_SYNC_REPO env var)")
+  .option("--non-interactive", "Run without interactive prompts (also enabled by CI env var)")
   // Commander passes (thisCommand=root, actionCommand=leaf) to root-level preAction hooks.
   // We check the actionCommand (the command actually being run) to skip the config group.
   .hook("preAction", (_thisCommand, actionCommand) => {
