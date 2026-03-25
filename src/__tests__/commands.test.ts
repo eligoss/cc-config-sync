@@ -457,7 +457,7 @@ describe("removeProjectCommand", () => {
 
     const { removeProjectCommand } = await import("../commands/remove-project.js");
 
-    await removeProjectCommand("my-app");
+    await removeProjectCommand("my-app", {});
 
     const { loadConfig } = await import("../config.js");
     const config = loadConfig();
@@ -472,6 +472,49 @@ describe("removeProjectCommand", () => {
     await removeProjectCommand("nonexistent");
     expect(exitSpy).toHaveBeenCalledWith(1);
     exitSpy.mockRestore();
+  });
+
+  it("removeProjectCommand_nonInteractive_skipsPromptKeepsDir", async () => {
+    const { removeProjectCommand } = await import("../commands/remove-project.js");
+
+    // Create the repo project dir so the prompt would normally fire
+    const repoProjectDir = join(env.repo, "configs", FAKE_HOST, "projects", "my-app");
+    mkdirSync(repoProjectDir, { recursive: true });
+    writeFileSync(join(repoProjectDir, "CLAUDE.md"), "# test");
+
+    await removeProjectCommand("my-app", { nonInteractive: true });
+
+    const { loadConfig } = await import("../config.js");
+    const config = loadConfig();
+    expect(config.machines[FAKE_HOST].projects["my-app"]).toBeUndefined();
+    // Repo dir should still exist (safe default)
+    expect(existsSync(repoProjectDir)).toBe(true);
+  });
+
+  it("removeProjectCommand_nonInteractive_deleteRepoDir_deletesDir", async () => {
+    const { removeProjectCommand } = await import("../commands/remove-project.js");
+
+    const repoProjectDir = join(env.repo, "configs", FAKE_HOST, "projects", "my-app");
+    mkdirSync(repoProjectDir, { recursive: true });
+    writeFileSync(join(repoProjectDir, "CLAUDE.md"), "# test");
+
+    await removeProjectCommand("my-app", { nonInteractive: true, deleteRepoDir: true });
+
+    const { loadConfig } = await import("../config.js");
+    const config = loadConfig();
+    expect(config.machines[FAKE_HOST].projects["my-app"]).toBeUndefined();
+    expect(existsSync(repoProjectDir)).toBe(false);
+  });
+
+  it("removeProjectCommand_nonInteractive_deleteRepoDir_missingDir_silent", async () => {
+    const { removeProjectCommand } = await import("../commands/remove-project.js");
+
+    // Don't create repo dir — it doesn't exist
+    await removeProjectCommand("my-app", { nonInteractive: true, deleteRepoDir: true });
+
+    const { loadConfig } = await import("../config.js");
+    const config = loadConfig();
+    expect(config.machines[FAKE_HOST].projects["my-app"]).toBeUndefined();
   });
 });
 

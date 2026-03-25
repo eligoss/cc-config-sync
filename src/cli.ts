@@ -82,6 +82,7 @@ program
   .command("remove-project")
   .description("Remove a project from tracking")
   .argument("<name>", "Project name")
+  .option("--delete-repo-dir", "Also delete the project directory in the sync repo")
   .action(removeProjectCommand);
 
 program
