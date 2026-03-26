@@ -13,3 +13,11 @@ export function isConfigSubcommand(cmd: Command): boolean {
   }
   return false;
 }
+
+/**
+ * Returns true if the CLI is running in non-interactive mode.
+ * Triggered by the --non-interactive flag or a truthy CI environment variable.
+ */
+export function isNonInteractive(options: { nonInteractive?: boolean }): boolean {
+  return options.nonInteractive === true || !!process.env.CI;
+}

@@ -21,6 +21,7 @@ program
   .description("Sync Claude Code configurations across machines")
   .version(version)
   .option("--repo <path>", "Path to the sync repo (or set CLAUDE_SYNC_REPO env var)")
+  .option("--non-interactive", "Run without interactive prompts (also enabled by CI env var)")
   // Commander passes (thisCommand=root, actionCommand=leaf) to root-level preAction hooks.
   // We check the actionCommand (the command actually being run) to skip the config group.
   .hook("preAction", (_thisCommand, actionCommand) => {
@@ -55,7 +56,7 @@ program
   .option("--dry-run", "Show what would be applied without copying files or creating backups")
   .option("--backup", "Force backups on for this run")
   .option("--no-backup", "Force backups off for this run")
-  .action(pushCommand);
+  .action((_options, command) => pushCommand(command.optsWithGlobals()));
 
 program
   .command("status")
@@ -68,7 +69,20 @@ program
 
 program.command("list").description("Show all registered paths").action(listCommand);
 
-program.command("init").description("Interactive setup for current machine").action(initCommand);
+program
+  .command("init")
+  .description("Interactive setup for current machine")
+  .option("--machine-name <name>", "Machine identifier (required in non-interactive mode)")
+  .option("--global-path <path>", "Path to global config directory (default: ~/.claude)")
+  .option("--backup", "Enable backups on push (default)")
+  .option("--no-backup", "Disable backups on push")
+  .option(
+    "--project <name:path>",
+    "Add project to track (repeatable, format: name:path)",
+    (val: string, acc: string[]) => [...acc, val],
+    [] as string[],
+  )
+  .action((_options, command) => initCommand(command.optsWithGlobals()));
 
 program
   .command("add-project")
@@ -81,7 +95,8 @@ program
   .command("remove-project")
   .description("Remove a project from tracking")
   .argument("<name>", "Project name")
-  .action(removeProjectCommand);
+  .option("--delete-repo-dir", "Also delete the project directory in the sync repo")
+  .action((name, _options, command) => removeProjectCommand(name, command.optsWithGlobals()));
 
 program
   .command("rename-project")
@@ -93,7 +108,7 @@ program
 program
   .command("clean-backups")
   .description("Delete dated backup folders from the repo backups/ directory")
-  .action(cleanBackupsCommand);
+  .action((_options, command) => cleanBackupsCommand(command.optsWithGlobals()));
 
 const configCmd = program.command("config").description("Manage cc-config-sync settings");
 

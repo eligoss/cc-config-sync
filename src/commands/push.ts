@@ -14,6 +14,7 @@ import { filterConfigFiles } from "../filter.js";
 import { ask } from "../prompt.js";
 import { getBackupsEnabled } from "../user-config.js";
 import { getSyncRepoPath } from "../config.js";
+import { isNonInteractive } from "../cli-utils.js";
 
 interface PushOptions {
   project?: string;
@@ -21,6 +22,7 @@ interface PushOptions {
   yes?: boolean;
   dryRun?: boolean;
   backup?: boolean; // undefined = use user config; true/false = override
+  nonInteractive?: boolean;
 }
 
 function assertSafeBackupLabel(label: string): void {
@@ -57,7 +59,8 @@ export async function pushCommand(options: PushOptions): Promise<void> {
 
   let pushed = 0;
   let skipped = 0;
-  let applyAll = options.yes ?? false;
+  let applyAll = (options.yes ?? false) || isNonInteractive(options);
+  let hasErrors = false;
   let gitignoreEnsured = false;
   const backupDate = new Date().toISOString().slice(0, 10);
 
@@ -103,25 +106,37 @@ export async function pushCommand(options: PushOptions): Promise<void> {
 
     if (backupsEnabled && fileExists(file.localPath)) {
       assertSafeBackupLabel(file.label);
-      if (!gitignoreEnsured) {
-        ensureBackupsGitignored(repoRoot);
-        gitignoreEnsured = true;
-      }
-      backupFileToRepo(file, machine.name, repoRoot, backupDate);
-      console.log(`  backup → backups/${backupDate}/${machine.name}/${file.label}`);
     }
 
-    copyFileWithDir(file.repoPath, file.localPath);
-    if (file.localPath.endsWith(".sh")) {
-      ensureExecutable(file.localPath);
+    try {
+      if (backupsEnabled && fileExists(file.localPath)) {
+        if (!gitignoreEnsured) {
+          ensureBackupsGitignored(repoRoot);
+          gitignoreEnsured = true;
+        }
+        backupFileToRepo(file, machine.name, repoRoot, backupDate);
+        console.log(`  backup → backups/${backupDate}/${machine.name}/${file.label}`);
+      }
+
+      copyFileWithDir(file.repoPath, file.localPath);
+      if (file.localPath.endsWith(".sh")) {
+        ensureExecutable(file.localPath);
+      }
+      console.log(`  push  ${file.label}`);
+      pushed++;
+    } catch (err) {
+      console.error(`  error  ${file.label}: ${err}`);
+      hasErrors = true;
     }
-    console.log(`  push  ${file.label}`);
-    pushed++;
   }
 
   if (options.dryRun) {
     console.log(`\nDone (dry run): ${pushed} would be pushed, ${skipped} skipped.`);
   } else {
     console.log(`\nDone: ${pushed} pushed, ${skipped} skipped.`);
+  }
+
+  if (hasErrors) {
+    process.exit(1);
   }
 }

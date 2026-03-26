@@ -2,6 +2,7 @@ import { readdirSync, existsSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { getSyncRepoPath } from "../config.js";
 import { ask } from "../prompt.js";
+import { isNonInteractive } from "../cli-utils.js";
 
 function countFilesRecursive(dir: string): number {
   let count = 0;
@@ -15,7 +16,11 @@ function countFilesRecursive(dir: string): number {
   return count;
 }
 
-export async function cleanBackupsCommand(): Promise<void> {
+interface CleanBackupsOptions {
+  nonInteractive?: boolean;
+}
+
+export async function cleanBackupsCommand(options: CleanBackupsOptions = {}): Promise<void> {
   const backupsDir = join(getSyncRepoPath(), "backups");
 
   if (!existsSync(backupsDir)) {
@@ -40,10 +45,12 @@ export async function cleanBackupsCommand(): Promise<void> {
     console.log(`  ${entry}/  (${count} file${count === 1 ? "" : "s"})`);
   }
 
-  const answer = await ask(`\nDelete all backups? [y/N] `);
-  if (answer !== "y" && answer !== "yes") {
-    console.log("Cancelled.");
-    return;
+  if (!isNonInteractive(options)) {
+    const answer = await ask(`\nDelete all backups? [y/N] `);
+    if (answer !== "y" && answer !== "yes") {
+      console.log("Cancelled.");
+      return;
+    }
   }
 
   let deleted = 0;
