@@ -1,7 +1,11 @@
-import { describe, it, expect, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
 describe("isNonInteractive", () => {
   const originalCI = process.env.CI;
+
+  beforeEach(() => {
+    vi.resetModules();
+  });
 
   afterEach(() => {
     if (originalCI === undefined) {

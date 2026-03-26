@@ -753,8 +753,13 @@ describe("cleanBackupsCommand — non-interactive", () => {
     mkdirSync(backupDir, { recursive: true });
     writeFileSync(join(backupDir, "file.txt"), "backup content");
 
-    // Mock prompt to answer "n"
+    // Mock prompt to answer "n" — reset modules so the mock is picked up
     vi.doMock("../prompt.js", () => ({ ask: async () => "n" }));
+    vi.resetModules();
+
+    // Re-set sync repo path after module reset
+    const config = await import("../config.js");
+    config.setSyncRepoPath(env.repo);
 
     const { cleanBackupsCommand } = await import("../commands/clean-backups.js");
 
