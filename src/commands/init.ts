@@ -50,6 +50,7 @@ export async function initCommand(options: InitOptions = {}): Promise<void> {
     if (!options.machineName) {
       console.error("Error: --machine-name is required in non-interactive mode");
       process.exit(1);
+      return;
     }
 
     const machineName = options.machineName;

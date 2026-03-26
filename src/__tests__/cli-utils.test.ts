@@ -46,4 +46,18 @@ describe("isNonInteractive", () => {
     const { isNonInteractive } = await import("../cli-utils.js");
     expect(isNonInteractive({ nonInteractive: true })).toBe(true);
   });
+
+  it("returns true when CI=false (string 'false' is truthy)", async () => {
+    process.env.CI = "false";
+    const { isNonInteractive } = await import("../cli-utils.js");
+    // Note: "false" is a truthy string — CI=false still enables non-interactive mode.
+    // This matches GitHub Actions behavior where CI is always "true".
+    expect(isNonInteractive({})).toBe(true);
+  });
+
+  it("returns false when CI is empty string", async () => {
+    process.env.CI = "";
+    const { isNonInteractive } = await import("../cli-utils.js");
+    expect(isNonInteractive({})).toBe(false);
+  });
 });

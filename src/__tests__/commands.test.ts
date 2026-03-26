@@ -801,6 +801,10 @@ describe("initCommand — non-interactive", () => {
     await initCommand({ nonInteractive: true });
 
     expect(exitSpy).toHaveBeenCalledWith(1);
+    // Verify config was not mutated
+    const { loadConfig } = await import("../config.js");
+    const config = loadConfig();
+    expect(Object.keys(config.machines)).toHaveLength(0);
     exitSpy.mockRestore();
   });
 
