@@ -753,9 +753,13 @@ describe("cleanBackupsCommand — non-interactive", () => {
     mkdirSync(backupDir, { recursive: true });
     writeFileSync(join(backupDir, "file.txt"), "backup content");
 
+    // Ensure we're in interactive mode (CI env var would make it non-interactive)
+    const savedCI = process.env.CI;
+    delete process.env.CI;
+
     // Mock prompt to answer "n" — reset modules so the mock is picked up
-    vi.doMock("../prompt.js", () => ({ ask: async () => "n" }));
     vi.resetModules();
+    vi.doMock("../prompt.js", () => ({ ask: async () => "n" }));
 
     // Re-set sync repo path after module reset
     const config = await import("../config.js");
@@ -764,6 +768,10 @@ describe("cleanBackupsCommand — non-interactive", () => {
     const { cleanBackupsCommand } = await import("../commands/clean-backups.js");
 
     await cleanBackupsCommand({});
+
+    // Restore CI env
+    if (savedCI !== undefined) process.env.CI = savedCI;
+    else delete process.env.CI;
 
     // Backup should still exist because we answered "n"
     expect(existsSync(backupDir)).toBe(true);
