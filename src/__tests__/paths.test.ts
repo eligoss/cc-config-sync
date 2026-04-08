@@ -35,26 +35,72 @@ function makeDirent(name: string): Dirent {
   } as unknown as Dirent;
 }
 
+/** Create a minimal Dirent-like object representing a directory (not a file). */
+function makeDirEntry(name: string): Dirent {
+  return {
+    name,
+    isFile: () => false,
+    isDirectory: () => true,
+    isBlockDevice: () => false,
+    isCharacterDevice: () => false,
+    isSymbolicLink: () => false,
+    isFIFO: () => false,
+    isSocket: () => false,
+    parentPath: "",
+    path: "",
+  } as unknown as Dirent;
+}
+
 /**
  * Helper to set up per-path mocks for existsSync and readdirSync.
- * `dirs` maps directory path to an array of filenames it contains.
- * Paths not in the map return false for existsSync and throw ENOENT for readdirSync.
+ * Values can be:
+ *   - string[] — regular file names
+ *   - { enotdir: true } — path exists but is not a directory (throws ENOTDIR)
+ *   - entries with { name, isDir: true } mixed into arrays for directory entries
+ * Paths not in the map throw ENOENT for readdirSync.
  */
-function mockDirs(dirs: Record<string, string[]>): void {
+function mockDirs(dirs: Record<string, string[] | { enotdir: true }>): void {
   vi.mocked(existsSync).mockImplementation((p) => {
     const path = typeof p === "string" ? p : p.toString();
     return path in dirs;
   });
   vi.mocked(readdirSync).mockImplementation((p) => {
     const path = typeof p === "string" ? p.toString() : p.toString();
-    const names = dirs[path];
-    if (!names) {
-      const err = Object.assign(new Error(`ENOENT: no such file or directory, scandir '${path}'`), {
+    const entry = dirs[path];
+    if (!entry) {
+      throw Object.assign(new Error(`ENOENT: no such file or directory, scandir '${path}'`), {
         code: "ENOENT",
       });
-      throw err;
     }
-    return names.map(makeDirent) as unknown as ReturnType<typeof readdirSync>;
+    if ("enotdir" in entry) {
+      throw Object.assign(new Error(`ENOTDIR: not a directory, scandir '${path}'`), {
+        code: "ENOTDIR",
+      });
+    }
+    return (entry as string[]).map(makeDirent) as unknown as ReturnType<typeof readdirSync>;
+  });
+}
+
+/**
+ * Like mockDirs but allows mixing file and directory entries in the same dir.
+ * Pass entries as { name, file: true } or { name, dir: true }.
+ */
+function mockDirsWithMixed(dirs: Record<string, Array<{ name: string; dir?: boolean }>>): void {
+  vi.mocked(existsSync).mockImplementation((p) => {
+    const path = typeof p === "string" ? p : p.toString();
+    return path in dirs;
+  });
+  vi.mocked(readdirSync).mockImplementation((p) => {
+    const path = typeof p === "string" ? p.toString() : p.toString();
+    const entries = dirs[path];
+    if (!entries) {
+      throw Object.assign(new Error(`ENOENT: no such file or directory, scandir '${path}'`), {
+        code: "ENOENT",
+      });
+    }
+    return entries.map((e) =>
+      e.dir ? makeDirEntry(e.name) : makeDirent(e.name),
+    ) as unknown as ReturnType<typeof readdirSync>;
   });
 }
 
@@ -250,6 +296,32 @@ describe("getConfigFiles", () => {
       expect(files).toHaveLength(5);
       expect(files.every((f) => !f.label.startsWith("global/hooks/"))).toBe(true);
     });
+
+    it("ignores directory entries with .sh names in hooks dir", () => {
+      mockDirsWithMixed({
+        "/sync-repo/configs/my-mac/global/hooks": [
+          { name: "session-start.sh" },
+          { name: "not-a-file.sh", dir: true }, // directory disguised as .sh — must be excluded
+        ],
+      });
+
+      const files = getConfigFiles("my-mac", baseMachine);
+      const hookLabels = files
+        .filter((f) => f.label.startsWith("global/hooks/"))
+        .map((f) => f.label);
+
+      expect(hookLabels).toEqual(["global/hooks/session-start.sh"]);
+    });
+
+    it("treats ENOTDIR gracefully for hook dirs", () => {
+      mockDirs({
+        "/sync-repo/configs/my-mac/global/hooks": { enotdir: true },
+      });
+
+      // Should not throw — ENOTDIR means the path is not a directory, treat as empty
+      const files = getConfigFiles("my-mac", baseMachine);
+      expect(files).toHaveLength(5); // only static global files
+    });
   });
 
   describe("rules/ discovery", () => {
@@ -325,6 +397,31 @@ describe("getConfigFiles", () => {
     it("adds no rules when neither dir exists", () => {
       const files = getConfigFiles("my-mac", baseMachine);
 
+      expect(files.filter((f) => f.label.startsWith("global/rules/"))).toHaveLength(0);
+    });
+
+    it("ignores directory entries with .md names in rules dir", () => {
+      mockDirsWithMixed({
+        "/Users/me/.claude/rules": [
+          { name: "valid-rule.md" },
+          { name: "subdir.md", dir: true }, // directory with .md name — must be excluded
+        ],
+      });
+
+      const files = getConfigFiles("my-mac", baseMachine);
+      const ruleLabels = files
+        .filter((f) => f.label.startsWith("global/rules/"))
+        .map((f) => f.label);
+
+      expect(ruleLabels).toEqual(["global/rules/valid-rule.md"]);
+    });
+
+    it("treats ENOTDIR gracefully for rules dir", () => {
+      mockDirs({
+        "/Users/me/.claude/rules": { enotdir: true },
+      });
+
+      const files = getConfigFiles("my-mac", baseMachine);
       expect(files.filter((f) => f.label.startsWith("global/rules/"))).toHaveLength(0);
     });
   });
