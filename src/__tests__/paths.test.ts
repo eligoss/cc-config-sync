@@ -532,6 +532,35 @@ describe("getConfigFiles", () => {
 
       expect(extraMdLabels).toHaveLength(0);
     });
+
+    it("ignores directory entries with .md names in root dir", () => {
+      mockDirsWithMixed({
+        "/Users/me/.claude": [
+          { name: "IDENTITY.md" },
+          { name: "SUBDIR.md", dir: true }, // directory with .md name — must be excluded
+        ],
+      });
+
+      const files = getConfigFiles("my-mac", baseMachine);
+      const extraMdLabels = files
+        .filter((f) => f.label.match(/^global\/[^/]+\.md$/) && f.label !== "global/CLAUDE.md")
+        .map((f) => f.label);
+
+      expect(extraMdLabels).toEqual(["global/IDENTITY.md"]);
+    });
+
+    it("treats ENOTDIR gracefully for extra .md discovery", () => {
+      mockDirs({
+        "/Users/me/.claude": { enotdir: true },
+      });
+
+      const files = getConfigFiles("my-mac", baseMachine);
+      const extraMdLabels = files
+        .filter((f) => f.label.match(/^global\/[^/]+\.md$/) && f.label !== "global/CLAUDE.md")
+        .map((f) => f.label);
+
+      expect(extraMdLabels).toHaveLength(0);
+    });
   });
 
   describe("symlink discovery", () => {
