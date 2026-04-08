@@ -20,8 +20,13 @@ sync-repo/
     └── MacBook-Pro/           # One folder per machine
         ├── global/
         │   ├── CLAUDE.md
+        │   ├── IDENTITY.md         # Extra root .md (optional)
         │   ├── settings.json
         │   ├── settings.local.json
+        │   ├── hooks/
+        │   │   └── *.sh            # Hook scripts
+        │   ├── rules/
+        │   │   └── *.md            # Path-scoped rules
         │   └── plugins/
         │       ├── installed_plugins.json
         │       └── known_marketplaces.json
@@ -226,6 +231,9 @@ Per machine, the tool tracks:
 | Scope                          | Files                                                                                                                    |
 | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------ |
 | **Global** (`~/.claude/`)      | `CLAUDE.md`, `settings.json`, `settings.local.json`, `plugins/installed_plugins.json`, `plugins/known_marketplaces.json` |
+| **Global hooks**               | `~/.claude/hooks/*.sh` — hook scripts (bi-directionally discovered from local and repo)                                  |
+| **Global rules**               | `~/.claude/rules/*.md` — path-scoped rule files                                                                          |
+| **Global extra root**          | `~/.claude/*.md` (except `CLAUDE.md`) — extra root files (`IDENTITY.md`, `SOUL.md`, etc.)                                |
 | **Per-project** (project root) | `CLAUDE.md`, `.claude/settings.json`, `.claude/settings.local.json`                                                      |
 | **Per-project** (memory)       | `~/.claude/projects/<project-id>/memory/MEMORY.md`                                                                       |
 
