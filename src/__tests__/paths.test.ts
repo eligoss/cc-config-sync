@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { existsSync, readdirSync } from "node:fs";
+import type { Dirent } from "node:fs";
 
 vi.mock("../config.js", () => ({
   getConfigsDir: () => "/sync-repo/configs",
@@ -18,10 +19,26 @@ vi.mock("node:fs", async (importOriginal) => {
 import { getConfigFiles, projectPathToClaudeId } from "../paths.js";
 import type { MachineConfig } from "../types.js";
 
+/** Create a minimal Dirent-like object representing a regular file. */
+function makeDirent(name: string): Dirent {
+  return {
+    name,
+    isFile: () => true,
+    isDirectory: () => false,
+    isBlockDevice: () => false,
+    isCharacterDevice: () => false,
+    isSymbolicLink: () => false,
+    isFIFO: () => false,
+    isSocket: () => false,
+    parentPath: "",
+    path: "",
+  } as unknown as Dirent;
+}
+
 /**
  * Helper to set up per-path mocks for existsSync and readdirSync.
  * `dirs` maps directory path to an array of filenames it contains.
- * Paths not in the map return false for existsSync and [] for readdirSync.
+ * Paths not in the map return false for existsSync and throw ENOENT for readdirSync.
  */
 function mockDirs(dirs: Record<string, string[]>): void {
   vi.mocked(existsSync).mockImplementation((p) => {
@@ -30,7 +47,14 @@ function mockDirs(dirs: Record<string, string[]>): void {
   });
   vi.mocked(readdirSync).mockImplementation((p) => {
     const path = typeof p === "string" ? p.toString() : p.toString();
-    return (dirs[path] ?? []) as unknown as ReturnType<typeof readdirSync>;
+    const names = dirs[path];
+    if (!names) {
+      const err = Object.assign(new Error(`ENOENT: no such file or directory, scandir '${path}'`), {
+        code: "ENOENT",
+      });
+      throw err;
+    }
+    return names.map(makeDirent) as unknown as ReturnType<typeof readdirSync>;
   });
 }
 

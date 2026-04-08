@@ -1,4 +1,4 @@
-import { readdirSync } from "node:fs";
+import { readdirSync, type Dirent } from "node:fs";
 import { join } from "node:path";
 import { getConfigsDir } from "./config.js";
 import type { ConfigFile, MachineConfig } from "./types.js";
@@ -27,7 +27,7 @@ const EXCLUDED_ROOT_MD = new Set(
 function discoverDirFiles(
   localDir: string,
   repoDir: string,
-  filter: (name: string) => boolean,
+  filter: (entry: Dirent) => boolean,
   labelPrefix: string,
   makeLocalPath: (name: string) => string,
   makeRepoPath: (name: string) => string,
@@ -35,9 +35,9 @@ function discoverDirFiles(
   const names = new Set<string>();
   const addNames = (dir: string): void => {
     try {
-      readdirSync(dir)
-        .filter(filter)
-        .forEach((name) => names.add(name));
+      readdirSync(dir, { withFileTypes: true })
+        .filter((entry) => entry.isFile() && filter(entry))
+        .forEach((entry) => names.add(entry.name));
     } catch (error) {
       const code = (error as NodeJS.ErrnoException).code;
       if (code !== "ENOENT" && code !== "ENOTDIR") {
@@ -80,7 +80,7 @@ export function getConfigFiles(machineName: string, machineConfig: MachineConfig
     ...discoverDirFiles(
       localHooksDir,
       repoHooksDir,
-      (f) => f.endsWith(".sh"),
+      (entry) => entry.name.endsWith(".sh"),
       "global/hooks",
       (name) => join(localHooksDir, name),
       (name) => join(repoHooksDir, name),
@@ -94,7 +94,7 @@ export function getConfigFiles(machineName: string, machineConfig: MachineConfig
     ...discoverDirFiles(
       localRulesDir,
       repoRulesDir,
-      (f) => f.endsWith(".md"),
+      (entry) => entry.name.endsWith(".md"),
       "global/rules",
       (name) => join(localRulesDir, name),
       (name) => join(repoRulesDir, name),
@@ -108,7 +108,7 @@ export function getConfigFiles(machineName: string, machineConfig: MachineConfig
     ...discoverDirFiles(
       localGlobalDir,
       repoGlobalDir,
-      (f) => f.endsWith(".md") && !EXCLUDED_ROOT_MD.has(f),
+      (entry) => entry.name.endsWith(".md") && !EXCLUDED_ROOT_MD.has(entry.name),
       "global",
       (name) => join(localGlobalDir, name),
       (name) => join(repoGlobalDir, name),
