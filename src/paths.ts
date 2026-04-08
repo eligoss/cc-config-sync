@@ -1,4 +1,4 @@
-import { readdirSync, type Dirent } from "node:fs";
+import { readdirSync, statSync, type Dirent } from "node:fs";
 import { join } from "node:path";
 import { getConfigsDir } from "./config.js";
 import type { ConfigFile, MachineConfig } from "./types.js";
@@ -20,6 +20,28 @@ const EXCLUDED_ROOT_MD = new Set(
 );
 
 /**
+ * Returns true if the entry is a regular file or a symlink that resolves to a
+ * regular file. Broken/non-file symlinks and directories return false.
+ */
+function isDiscoverableFile(dir: string, entry: Dirent): boolean {
+  if (entry.isFile()) {
+    return true;
+  }
+  if (!entry.isSymbolicLink()) {
+    return false;
+  }
+  try {
+    return statSync(join(dir, entry.name)).isFile();
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code;
+    if (code === "ENOENT" || code === "ENOTDIR") {
+      return false;
+    }
+    throw error;
+  }
+}
+
+/**
  * Discover files from the union of a local and repo directory.
  * This ensures bi-directional discovery: `pull` picks up new local files,
  * and `push` picks up new repo files.
@@ -36,7 +58,7 @@ function discoverDirFiles(
   const addNames = (dir: string): void => {
     try {
       readdirSync(dir, { withFileTypes: true })
-        .filter((entry) => entry.isFile() && filter(entry))
+        .filter((entry) => isDiscoverableFile(dir, entry) && filter(entry))
         .forEach((entry) => names.add(entry.name));
     } catch (error) {
       const code = (error as NodeJS.ErrnoException).code;

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { existsSync, readdirSync } from "node:fs";
-import type { Dirent } from "node:fs";
+import { existsSync, readdirSync, statSync } from "node:fs";
+import type { Dirent, Stats } from "node:fs";
 
 vi.mock("../config.js", () => ({
   getConfigsDir: () => "/sync-repo/configs",
@@ -13,6 +13,7 @@ vi.mock("node:fs", async (importOriginal) => {
     ...actual,
     existsSync: vi.fn(),
     readdirSync: vi.fn(),
+    statSync: vi.fn(),
   };
 });
 
@@ -44,6 +45,22 @@ function makeDirEntry(name: string): Dirent {
     isBlockDevice: () => false,
     isCharacterDevice: () => false,
     isSymbolicLink: () => false,
+    isFIFO: () => false,
+    isSocket: () => false,
+    parentPath: "",
+    path: "",
+  } as unknown as Dirent;
+}
+
+/** Create a minimal Dirent-like object representing a symbolic link (not a regular file). */
+function makeSymlinkEntry(name: string): Dirent {
+  return {
+    name,
+    isFile: () => false,
+    isDirectory: () => false,
+    isBlockDevice: () => false,
+    isCharacterDevice: () => false,
+    isSymbolicLink: () => true,
     isFIFO: () => false,
     isSocket: () => false,
     parentPath: "",
@@ -514,6 +531,73 @@ describe("getConfigFiles", () => {
         .map((f) => f.label);
 
       expect(extraMdLabels).toHaveLength(0);
+    });
+  });
+
+  describe("symlink discovery", () => {
+    it("discovers symlinked .sh files in hooks dir", () => {
+      vi.mocked(statSync).mockReturnValue({ isFile: () => true } as unknown as Stats);
+      vi.mocked(readdirSync).mockImplementation((p) => {
+        const path = typeof p === "string" ? p : p.toString();
+        if (path === "/sync-repo/configs/my-mac/global/hooks") {
+          return [
+            makeDirent("session-start.sh"),
+            makeSymlinkEntry("linked-hook.sh"),
+          ] as unknown as ReturnType<typeof readdirSync>;
+        }
+        throw Object.assign(new Error(`ENOENT: '${path}'`), { code: "ENOENT" });
+      });
+
+      const files = getConfigFiles("my-mac", baseMachine);
+      const hookLabels = files
+        .filter((f) => f.label.startsWith("global/hooks/"))
+        .map((f) => f.label);
+
+      expect(hookLabels).toContain("global/hooks/linked-hook.sh");
+    });
+
+    it("skips broken symlinks in hooks dir", () => {
+      vi.mocked(statSync).mockImplementation(() => {
+        throw Object.assign(new Error("ENOENT"), { code: "ENOENT" });
+      });
+      vi.mocked(readdirSync).mockImplementation((p) => {
+        const path = typeof p === "string" ? p : p.toString();
+        if (path === "/sync-repo/configs/my-mac/global/hooks") {
+          return [
+            makeDirent("session-start.sh"),
+            makeSymlinkEntry("broken-link.sh"),
+          ] as unknown as ReturnType<typeof readdirSync>;
+        }
+        throw Object.assign(new Error(`ENOENT: '${path}'`), { code: "ENOENT" });
+      });
+
+      const files = getConfigFiles("my-mac", baseMachine);
+      const hookLabels = files
+        .filter((f) => f.label.startsWith("global/hooks/"))
+        .map((f) => f.label);
+
+      expect(hookLabels).toEqual(["global/hooks/session-start.sh"]);
+    });
+
+    it("discovers symlinked .md files in rules dir", () => {
+      vi.mocked(statSync).mockReturnValue({ isFile: () => true } as unknown as Stats);
+      vi.mocked(readdirSync).mockImplementation((p) => {
+        const path = typeof p === "string" ? p : p.toString();
+        if (path === "/Users/me/.claude/rules") {
+          return [
+            makeDirent("style.md"),
+            makeSymlinkEntry("linked-rule.md"),
+          ] as unknown as ReturnType<typeof readdirSync>;
+        }
+        throw Object.assign(new Error(`ENOENT: '${path}'`), { code: "ENOENT" });
+      });
+
+      const files = getConfigFiles("my-mac", baseMachine);
+      const ruleLabels = files
+        .filter((f) => f.label.startsWith("global/rules/"))
+        .map((f) => f.label);
+
+      expect(ruleLabels).toContain("global/rules/linked-rule.md");
     });
   });
 
