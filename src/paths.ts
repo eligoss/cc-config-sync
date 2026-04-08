@@ -1,4 +1,4 @@
-import { existsSync, readdirSync } from "node:fs";
+import { readdirSync } from "node:fs";
 import { join } from "node:path";
 import { getConfigsDir } from "./config.js";
 import type { ConfigFile, MachineConfig } from "./types.js";
@@ -15,7 +15,9 @@ const PROJECT_CLAUDE_FILES = [".claude/settings.json", ".claude/settings.local.j
 const PROJECT_MEMORY_FILES = ["MEMORY.md"];
 
 /** Root .md files already tracked via GLOBAL_FILES — excluded from extra root discovery. */
-const EXCLUDED_ROOT_MD = new Set(["CLAUDE.md"]);
+const EXCLUDED_ROOT_MD = new Set(
+  GLOBAL_FILES.filter((file) => file.endsWith(".md") && !file.includes("/")),
+);
 
 /**
  * Discover files from the union of a local and repo directory.
@@ -31,16 +33,22 @@ function discoverDirFiles(
   makeRepoPath: (name: string) => string,
 ): ConfigFile[] {
   const names = new Set<string>();
-  if (existsSync(localDir)) {
-    readdirSync(localDir)
-      .filter(filter)
-      .forEach((n) => names.add(n));
-  }
-  if (existsSync(repoDir)) {
-    readdirSync(repoDir)
-      .filter(filter)
-      .forEach((n) => names.add(n));
-  }
+  const addNames = (dir: string): void => {
+    try {
+      readdirSync(dir)
+        .filter(filter)
+        .forEach((name) => names.add(name));
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code;
+      if (code !== "ENOENT" && code !== "ENOTDIR") {
+        throw error;
+      }
+    }
+  };
+
+  addNames(localDir);
+  addNames(repoDir);
+
   return [...names].sort().map((name) => ({
     label: `${labelPrefix}/${name}`,
     localPath: makeLocalPath(name),
