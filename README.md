@@ -27,6 +27,8 @@ sync-repo/
         │   │   └── *.sh            # Hook scripts
         │   ├── rules/
         │   │   └── *.md            # Path-scoped rules
+        │   ├── commands/
+        │   │   └── *.md            # Personal slash commands
         │   └── plugins/
         │       ├── installed_plugins.json
         │       └── known_marketplaces.json
@@ -232,8 +234,9 @@ Per machine, the tool tracks:
 | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------ |
 | **Global** (`~/.claude/`)      | `CLAUDE.md`, `settings.json`, `settings.local.json`, `plugins/installed_plugins.json`, `plugins/known_marketplaces.json` |
 | **Global hooks**               | `~/.claude/hooks/*.sh` — hook scripts (bi-directionally discovered from local and repo)                                  |
-| **Global rules**               | `~/.claude/rules/*.md` — path-scoped rule files                                                                          |
-| **Global extra root**          | `~/.claude/*.md` (except `CLAUDE.md`) — extra root files (`IDENTITY.md`, `SOUL.md`, etc.)                                |
+| **Global rules**               | `~/.claude/rules/*.md` — path-scoped rule files (bi-directionally discovered from local and repo)                        |
+| **Global commands**            | `~/.claude/commands/*.md` — personal slash commands (bi-directionally discovered from local and repo)                    |
+| **Global extra root**          | `~/.claude/*.md` (except `CLAUDE.md`) — extra root files (`IDENTITY.md`, `SOUL.md`, etc.), bi-directionally discovered   |
 | **Per-project** (project root) | `CLAUDE.md`, `.claude/settings.json`, `.claude/settings.local.json`                                                      |
 | **Per-project** (memory)       | `~/.claude/projects/<project-id>/memory/MEMORY.md`                                                                       |
 
