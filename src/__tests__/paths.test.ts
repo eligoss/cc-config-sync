@@ -219,7 +219,7 @@ describe("getConfigFiles", () => {
 
     const files = getConfigFiles("my-mac", machine);
 
-    // 5 global + 0 hooks + 0 rules + 0 extra md + 4 per project x 2 = 13
+    // 5 global + 0 hooks + 0 rules + 0 commands + 0 extra md + 4 per project x 2 = 13
     expect(files).toHaveLength(13);
   });
 
@@ -443,6 +443,108 @@ describe("getConfigFiles", () => {
     });
   });
 
+  describe("commands/ discovery", () => {
+    it("discovers commands from local dir only", () => {
+      mockDirs({
+        "/Users/me/.claude/commands": ["deploy.md", "test.md"],
+      });
+
+      const files = getConfigFiles("my-mac", baseMachine);
+      const commandLabels = files
+        .filter((f) => f.label.startsWith("global/commands/"))
+        .map((f) => f.label);
+
+      expect(commandLabels).toEqual(["global/commands/deploy.md", "global/commands/test.md"]);
+    });
+
+    it("discovers commands from repo dir only", () => {
+      mockDirs({
+        "/sync-repo/configs/my-mac/global/commands": ["review.md"],
+      });
+
+      const files = getConfigFiles("my-mac", baseMachine);
+      const commandLabels = files
+        .filter((f) => f.label.startsWith("global/commands/"))
+        .map((f) => f.label);
+
+      expect(commandLabels).toEqual(["global/commands/review.md"]);
+    });
+
+    it("takes union of local and repo command dirs", () => {
+      mockDirs({
+        "/Users/me/.claude/commands": ["local-cmd.md", "shared-cmd.md"],
+        "/sync-repo/configs/my-mac/global/commands": ["repo-cmd.md", "shared-cmd.md"],
+      });
+
+      const files = getConfigFiles("my-mac", baseMachine);
+      const commandLabels = files
+        .filter((f) => f.label.startsWith("global/commands/"))
+        .map((f) => f.label);
+
+      expect(commandLabels).toEqual([
+        "global/commands/local-cmd.md",
+        "global/commands/repo-cmd.md",
+        "global/commands/shared-cmd.md",
+      ]);
+    });
+
+    it("uses correct paths for command files", () => {
+      mockDirs({
+        "/Users/me/.claude/commands": ["deploy.md"],
+      });
+
+      const files = getConfigFiles("my-mac", baseMachine);
+      const command = files.find((f) => f.label === "global/commands/deploy.md")!;
+
+      expect(command.localPath).toBe("/Users/me/.claude/commands/deploy.md");
+      expect(command.repoPath).toBe("/sync-repo/configs/my-mac/global/commands/deploy.md");
+    });
+
+    it("only includes .md files in commands dir", () => {
+      mockDirs({
+        "/Users/me/.claude/commands": ["valid-cmd.md", "notes.txt", "script.sh"],
+      });
+
+      const files = getConfigFiles("my-mac", baseMachine);
+      const commandLabels = files
+        .filter((f) => f.label.startsWith("global/commands/"))
+        .map((f) => f.label);
+
+      expect(commandLabels).toEqual(["global/commands/valid-cmd.md"]);
+    });
+
+    it("adds no commands when neither dir exists", () => {
+      const files = getConfigFiles("my-mac", baseMachine);
+
+      expect(files.filter((f) => f.label.startsWith("global/commands/"))).toHaveLength(0);
+    });
+
+    it("ignores directory entries with .md names in commands dir", () => {
+      mockDirsWithMixed({
+        "/Users/me/.claude/commands": [
+          { name: "valid-cmd.md" },
+          { name: "subdir.md", dir: true }, // directory with .md name — must be excluded
+        ],
+      });
+
+      const files = getConfigFiles("my-mac", baseMachine);
+      const commandLabels = files
+        .filter((f) => f.label.startsWith("global/commands/"))
+        .map((f) => f.label);
+
+      expect(commandLabels).toEqual(["global/commands/valid-cmd.md"]);
+    });
+
+    it("treats ENOTDIR gracefully for commands dir", () => {
+      mockDirs({
+        "/Users/me/.claude/commands": { enotdir: true },
+      });
+
+      const files = getConfigFiles("my-mac", baseMachine);
+      expect(files.filter((f) => f.label.startsWith("global/commands/"))).toHaveLength(0);
+    });
+  });
+
   describe("extra root .md files discovery", () => {
     it("discovers IDENTITY.md and SOUL.md from local dir", () => {
       mockDirs({
@@ -631,18 +733,19 @@ describe("getConfigFiles", () => {
   });
 
   describe("combined discovery", () => {
-    it("includes hooks, rules, and extra .md in correct order", () => {
+    it("includes hooks, rules, commands, and extra .md in correct order", () => {
       mockDirs({
         "/Users/me/.claude/hooks": ["pre-commit.sh"],
         "/Users/me/.claude/rules": ["style.md"],
+        "/Users/me/.claude/commands": ["deploy.md"],
         "/Users/me/.claude": ["IDENTITY.md", "SOUL.md"],
       });
 
       const files = getConfigFiles("my-mac", baseMachine);
       const labels = files.map((f) => f.label);
 
-      // 5 global static + 1 hook + 1 rule + 2 extra .md = 9
-      expect(files).toHaveLength(9);
+      // 5 global static + 1 hook + 1 rule + 1 command + 2 extra .md = 10
+      expect(files).toHaveLength(10);
       expect(labels).toEqual([
         "global/CLAUDE.md",
         "global/settings.json",
@@ -651,6 +754,7 @@ describe("getConfigFiles", () => {
         "global/plugins/known_marketplaces.json",
         "global/hooks/pre-commit.sh",
         "global/rules/style.md",
+        "global/commands/deploy.md",
         "global/IDENTITY.md",
         "global/SOUL.md",
       ]);

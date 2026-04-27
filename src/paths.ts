@@ -123,6 +123,20 @@ export function getConfigFiles(machineName: string, machineConfig: MachineConfig
     ),
   );
 
+  // Global commands (bi-directional: local + repo)
+  const localCommandsDir = join(machineConfig.globalConfigPath, "commands");
+  const repoCommandsDir = join(machineDir, "global", "commands");
+  files.push(
+    ...discoverDirFiles(
+      localCommandsDir,
+      repoCommandsDir,
+      (entry) => entry.name.endsWith(".md"),
+      "global/commands",
+      (name) => join(localCommandsDir, name),
+      (name) => join(repoCommandsDir, name),
+    ),
+  );
+
   // Extra root .md files (IDENTITY.md, SOUL.md, etc. — excludes CLAUDE.md)
   const localGlobalDir = machineConfig.globalConfigPath;
   const repoGlobalDir = join(machineDir, "global");
