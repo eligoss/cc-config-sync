@@ -1,4 +1,4 @@
-import { existsSync, readdirSync } from "node:fs";
+import { readdirSync, statSync, type Dirent } from "node:fs";
 import { join } from "node:path";
 import { getConfigsDir } from "./config.js";
 import type { ConfigFile, MachineConfig } from "./types.js";
@@ -13,6 +13,70 @@ const GLOBAL_FILES = [
 const PROJECT_ROOT_FILES = ["CLAUDE.md"];
 const PROJECT_CLAUDE_FILES = [".claude/settings.json", ".claude/settings.local.json"];
 const PROJECT_MEMORY_FILES = ["MEMORY.md"];
+
+/** Root .md files already tracked via GLOBAL_FILES — excluded from extra root discovery. */
+const EXCLUDED_ROOT_MD = new Set(
+  GLOBAL_FILES.filter((file) => file.endsWith(".md") && !file.includes("/")),
+);
+
+/**
+ * Returns true if the entry is a regular file or a symlink that resolves to a
+ * regular file. Broken/non-file symlinks and directories return false.
+ */
+function isDiscoverableFile(dir: string, entry: Dirent): boolean {
+  if (entry.isFile()) {
+    return true;
+  }
+  if (!entry.isSymbolicLink()) {
+    return false;
+  }
+  try {
+    return statSync(join(dir, entry.name)).isFile();
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code;
+    if (code === "ENOENT" || code === "ENOTDIR") {
+      return false;
+    }
+    throw error;
+  }
+}
+
+/**
+ * Discover files from the union of a local and repo directory.
+ * This ensures bi-directional discovery: `pull` picks up new local files,
+ * and `push` picks up new repo files.
+ */
+function discoverDirFiles(
+  localDir: string,
+  repoDir: string,
+  filter: (entry: Dirent) => boolean,
+  labelPrefix: string,
+  makeLocalPath: (name: string) => string,
+  makeRepoPath: (name: string) => string,
+): ConfigFile[] {
+  const names = new Set<string>();
+  const addNames = (dir: string): void => {
+    try {
+      readdirSync(dir, { withFileTypes: true })
+        .filter((entry) => isDiscoverableFile(dir, entry) && filter(entry))
+        .forEach((entry) => names.add(entry.name));
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code;
+      if (code !== "ENOENT" && code !== "ENOTDIR") {
+        throw error;
+      }
+    }
+  };
+
+  addNames(localDir);
+  addNames(repoDir);
+
+  return [...names].sort().map((name) => ({
+    label: `${labelPrefix}/${name}`,
+    localPath: makeLocalPath(name),
+    repoPath: makeRepoPath(name),
+  }));
+}
 
 export function projectPathToClaudeId(projectPath: string): string {
   return projectPath.replace(/\//g, "-");
@@ -31,20 +95,61 @@ export function getConfigFiles(machineName: string, machineConfig: MachineConfig
     });
   }
 
-  // Global hook scripts
+  // Global hook scripts (bi-directional: local + repo)
+  const localHooksDir = join(machineConfig.globalConfigPath, "hooks");
   const repoHooksDir = join(machineDir, "global", "hooks");
-  if (existsSync(repoHooksDir)) {
-    const hookNames = readdirSync(repoHooksDir)
-      .filter((f) => f.endsWith(".sh"))
-      .sort(); // deterministic order
-    for (const name of hookNames) {
-      files.push({
-        label: `global/hooks/${name}`,
-        localPath: join(machineConfig.globalConfigPath, "hooks", name),
-        repoPath: join(repoHooksDir, name),
-      });
-    }
-  }
+  files.push(
+    ...discoverDirFiles(
+      localHooksDir,
+      repoHooksDir,
+      (entry) => entry.name.endsWith(".sh"),
+      "global/hooks",
+      (name) => join(localHooksDir, name),
+      (name) => join(repoHooksDir, name),
+    ),
+  );
+
+  // Global rules (bi-directional: local + repo)
+  const localRulesDir = join(machineConfig.globalConfigPath, "rules");
+  const repoRulesDir = join(machineDir, "global", "rules");
+  files.push(
+    ...discoverDirFiles(
+      localRulesDir,
+      repoRulesDir,
+      (entry) => entry.name.endsWith(".md"),
+      "global/rules",
+      (name) => join(localRulesDir, name),
+      (name) => join(repoRulesDir, name),
+    ),
+  );
+
+  // Global commands (bi-directional: local + repo)
+  const localCommandsDir = join(machineConfig.globalConfigPath, "commands");
+  const repoCommandsDir = join(machineDir, "global", "commands");
+  files.push(
+    ...discoverDirFiles(
+      localCommandsDir,
+      repoCommandsDir,
+      (entry) => entry.name.endsWith(".md"),
+      "global/commands",
+      (name) => join(localCommandsDir, name),
+      (name) => join(repoCommandsDir, name),
+    ),
+  );
+
+  // Extra root .md files (IDENTITY.md, SOUL.md, etc. — excludes CLAUDE.md)
+  const localGlobalDir = machineConfig.globalConfigPath;
+  const repoGlobalDir = join(machineDir, "global");
+  files.push(
+    ...discoverDirFiles(
+      localGlobalDir,
+      repoGlobalDir,
+      (entry) => entry.name.endsWith(".md") && !EXCLUDED_ROOT_MD.has(entry.name),
+      "global",
+      (name) => join(localGlobalDir, name),
+      (name) => join(repoGlobalDir, name),
+    ),
+  );
 
   // Per-project config files
   for (const [projectName, projectPath] of Object.entries(machineConfig.projects)) {
