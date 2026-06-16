@@ -230,6 +230,130 @@ describe("getConfigFiles", () => {
     expect(files.every((f) => f.label.startsWith("global/"))).toBe(true);
   });
 
+  describe("project skills discovery (recursive, bi-directional)", () => {
+    const machine: MachineConfig = {
+      globalConfigPath: "/Users/me/.claude",
+      projects: { "my-app": "/Users/me/projects/my-app" },
+    };
+    const localSkills = "/Users/me/projects/my-app/.claude/skills";
+    const repoSkills = "/sync-repo/configs/my-mac/projects/my-app/.claude/skills";
+
+    const skillFiles = (m: MachineConfig): ReturnType<typeof getConfigFiles> =>
+      getConfigFiles("my-mac", m).filter((f) => f.label.includes("/.claude/skills/"));
+
+    it("discovers a skill's SKILL.md from local dir only (pull scenario)", () => {
+      mockDirsWithMixed({
+        [localSkills]: [{ name: "my-skill", dir: true }],
+        [`${localSkills}/my-skill`]: [{ name: "SKILL.md" }],
+      });
+
+      const files = skillFiles(machine);
+
+      expect(files).toHaveLength(1);
+      expect(files[0].label).toBe("projects/my-app/.claude/skills/my-skill/SKILL.md");
+      expect(files[0].localPath).toBe(`${localSkills}/my-skill/SKILL.md`);
+      expect(files[0].repoPath).toBe(`${repoSkills}/my-skill/SKILL.md`);
+    });
+
+    it("discovers a skill from repo dir only (push scenario)", () => {
+      mockDirsWithMixed({
+        [repoSkills]: [{ name: "my-skill", dir: true }],
+        [`${repoSkills}/my-skill`]: [{ name: "SKILL.md" }],
+      });
+
+      const files = skillFiles(machine);
+
+      expect(files.map((f) => f.label)).toEqual([
+        "projects/my-app/.claude/skills/my-skill/SKILL.md",
+      ]);
+    });
+
+    it("recurses into references/ subdirectories", () => {
+      mockDirsWithMixed({
+        [localSkills]: [{ name: "my-skill", dir: true }],
+        [`${localSkills}/my-skill`]: [{ name: "SKILL.md" }, { name: "references", dir: true }],
+        [`${localSkills}/my-skill/references`]: [{ name: "a.md" }, { name: "b.md" }],
+      });
+
+      const files = skillFiles(machine);
+
+      expect(files.map((f) => f.label)).toEqual([
+        "projects/my-app/.claude/skills/my-skill/SKILL.md",
+        "projects/my-app/.claude/skills/my-skill/references/a.md",
+        "projects/my-app/.claude/skills/my-skill/references/b.md",
+      ]);
+    });
+
+    it("takes the union of local and repo skill trees", () => {
+      mockDirsWithMixed({
+        [localSkills]: [{ name: "skill-a", dir: true }],
+        [`${localSkills}/skill-a`]: [{ name: "SKILL.md" }],
+        [repoSkills]: [{ name: "skill-b", dir: true }],
+        [`${repoSkills}/skill-b`]: [{ name: "SKILL.md" }],
+      });
+
+      const files = skillFiles(machine);
+
+      expect(files.map((f) => f.label)).toEqual([
+        "projects/my-app/.claude/skills/skill-a/SKILL.md",
+        "projects/my-app/.claude/skills/skill-b/SKILL.md",
+      ]);
+    });
+
+    it("skips dot entries (.DS_Store, dot-dirs)", () => {
+      mockDirsWithMixed({
+        [localSkills]: [{ name: "my-skill", dir: true }, { name: ".DS_Store" }],
+        [`${localSkills}/my-skill`]: [
+          { name: "SKILL.md" },
+          { name: ".DS_Store" },
+          { name: ".hidden", dir: true },
+        ],
+      });
+
+      const files = skillFiles(machine);
+
+      expect(files.map((f) => f.label)).toEqual([
+        "projects/my-app/.claude/skills/my-skill/SKILL.md",
+      ]);
+    });
+
+    it("adds no skill files when neither dir exists", () => {
+      const files = skillFiles(machine);
+      expect(files).toHaveLength(0);
+    });
+
+    it("treats ENOTDIR gracefully for the skills dir", () => {
+      mockDirs({ [localSkills]: { enotdir: true } });
+
+      expect(() => skillFiles(machine)).not.toThrow();
+      expect(skillFiles(machine)).toHaveLength(0);
+    });
+
+    it("resolves a symlinked SKILL.md that points to a regular file", () => {
+      vi.mocked(existsSync).mockImplementation((p) => {
+        const path = p.toString();
+        return path === localSkills || path === `${localSkills}/my-skill`;
+      });
+      vi.mocked(readdirSync).mockImplementation((p) => {
+        const path = p.toString();
+        if (path === localSkills) {
+          return [makeDirEntry("my-skill")] as unknown as ReturnType<typeof readdirSync>;
+        }
+        if (path === `${localSkills}/my-skill`) {
+          return [makeSymlinkEntry("SKILL.md")] as unknown as ReturnType<typeof readdirSync>;
+        }
+        throw Object.assign(new Error(`ENOENT: ${path}`), { code: "ENOENT" });
+      });
+      vi.mocked(statSync).mockReturnValue({ isFile: () => true } as unknown as Stats);
+
+      const files = skillFiles(machine);
+
+      expect(files.map((f) => f.label)).toEqual([
+        "projects/my-app/.claude/skills/my-skill/SKILL.md",
+      ]);
+    });
+  });
+
   describe("hook file discovery (bi-directional)", () => {
     it("discovers hooks from repo dir only", () => {
       mockDirs({
