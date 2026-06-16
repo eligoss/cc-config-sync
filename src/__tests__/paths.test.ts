@@ -344,7 +344,9 @@ describe("getConfigFiles", () => {
         }
         throw Object.assign(new Error(`ENOENT: ${path}`), { code: "ENOENT" });
       });
-      vi.mocked(statSync).mockReturnValue({ isFile: () => true } as unknown as Stats);
+      vi.mocked(statSync).mockReturnValue({
+        isFile: () => true,
+      } as unknown as ReturnType<typeof statSync>);
 
       const files = skillFiles(machine);
 
