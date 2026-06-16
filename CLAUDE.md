@@ -70,6 +70,7 @@ Per machine, the tool syncs:
 
 - **Global** (`~/.claude/`): `CLAUDE.md`, `settings.json`, `settings.local.json`, `plugins/installed_plugins.json`, `plugins/known_marketplaces.json`, `hooks/*.sh`
 - **Per-project**: `CLAUDE.md`, `.claude/settings.json`, `.claude/settings.local.json`
+- **Per-project skills** (`.claude/skills/`): all skill files, recursively (e.g. `<name>/SKILL.md`, `references/*`) — bi-directionally discovered
 - **Per-project memory** (`~/.claude/projects/<id>/memory/`): `MEMORY.md`
 
 Hook scripts (`hooks/*.sh`) are automatically made executable (0o755) after push.

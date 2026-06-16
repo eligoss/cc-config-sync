@@ -37,7 +37,9 @@ sync-repo/
             │   ├── CLAUDE.md
             │   ├── .claude/
             │   │   ├── settings.json
-            │   │   └── settings.local.json
+            │   │   ├── settings.local.json
+            │   │   └── skills/         # recursive: <name>/SKILL.md + references/
+            │   │       └── ...
             │   └── memory/
             │       └── MEMORY.md
             └── another-project/
@@ -238,6 +240,7 @@ Per machine, the tool tracks:
 | **Global commands**            | `~/.claude/commands/*.md` — personal slash commands (bi-directionally discovered from local and repo)                    |
 | **Global extra root**          | `~/.claude/*.md` (except `CLAUDE.md`) — extra root files (`IDENTITY.md`, `SOUL.md`, etc.), bi-directionally discovered   |
 | **Per-project** (project root) | `CLAUDE.md`, `.claude/settings.json`, `.claude/settings.local.json`                                                      |
+| **Per-project** (skills)       | `.claude/skills/**` — skill trees incl. nested `<name>/SKILL.md` and `references/` (recursively discovered, bi-directional) |
 | **Per-project** (memory)       | `~/.claude/projects/<project-id>/memory/MEMORY.md`                                                                       |
 
 ## Typical Workflow
