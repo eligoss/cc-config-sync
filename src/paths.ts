@@ -78,6 +78,58 @@ function discoverDirFiles(
   }));
 }
 
+/**
+ * Recursively discover files across the union of a local and repo directory
+ * tree, preserving relative sub-paths. Needed for nested config trees like
+ * `.claude/skills/<name>/SKILL.md` (+ `references/`) where the flat
+ * discoverDirFiles scan is insufficient. Dot entries (e.g. `.DS_Store`) are
+ * skipped at every level. Only regular directories are recursed into;
+ * symlinked directories are not traversed (symlinks resolve to regular files
+ * only) to avoid cycles.
+ */
+function discoverDirFilesRecursive(
+  localDir: string,
+  repoDir: string,
+  labelPrefix: string,
+  makeLocalPath: (relPath: string) => string,
+  makeRepoPath: (relPath: string) => string,
+): ConfigFile[] {
+  const relPaths = new Set<string>();
+  const walk = (baseDir: string, subPath: string): void => {
+    const currentDir = subPath ? join(baseDir, subPath) : baseDir;
+    let entries: Dirent[];
+    try {
+      entries = readdirSync(currentDir, { withFileTypes: true });
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code;
+      if (code === "ENOENT" || code === "ENOTDIR") {
+        return;
+      }
+      throw error;
+    }
+    for (const entry of entries) {
+      if (entry.name.startsWith(".")) {
+        continue;
+      }
+      const rel = subPath ? `${subPath}/${entry.name}` : entry.name;
+      if (isDiscoverableFile(currentDir, entry)) {
+        relPaths.add(rel);
+      } else if (entry.isDirectory()) {
+        walk(baseDir, rel);
+      }
+    }
+  };
+
+  walk(localDir, "");
+  walk(repoDir, "");
+
+  return [...relPaths].sort().map((rel) => ({
+    label: `${labelPrefix}/${rel}`,
+    localPath: makeLocalPath(rel),
+    repoPath: makeRepoPath(rel),
+  }));
+}
+
 export function projectPathToClaudeId(projectPath: string): string {
   return projectPath.replace(/\//g, "-");
 }
@@ -175,6 +227,19 @@ export function getConfigFiles(machineName: string, machineConfig: MachineConfig
         repoPath: join(machineDir, "projects", projectName, "memory", file),
       });
     }
+
+    // Per-project skills (recursive: .claude/skills/<name>/SKILL.md + references)
+    const localSkillsDir = join(projectPath, ".claude", "skills");
+    const repoSkillsDir = join(machineDir, "projects", projectName, ".claude", "skills");
+    files.push(
+      ...discoverDirFilesRecursive(
+        localSkillsDir,
+        repoSkillsDir,
+        `projects/${projectName}/.claude/skills`,
+        (rel) => join(localSkillsDir, rel),
+        (rel) => join(repoSkillsDir, rel),
+      ),
+    );
   }
 
   return files;
